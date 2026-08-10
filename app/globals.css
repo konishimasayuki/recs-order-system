@@ -681,6 +681,84 @@ textarea:focus {
   line-height: 1.8;
 }
 
+/* ---------- カード内タブ ---------- */
+
+.card-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-border);
+  margin: -4px 0 24px;
+}
+
+.card-tabs a {
+  display: block;
+  padding: 11px 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+
+.card-tabs a:hover {
+  color: var(--color-text);
+}
+
+.card-tabs a.active {
+  color: var(--color-navy-900);
+  border-bottom-color: var(--color-gold-500);
+}
+
+.card-tabs .count {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* ---------- 一覧から1件を選ぶテーブル ---------- */
+
+.data-table tbody tr.selectable {
+  position: relative;
+  cursor: pointer;
+}
+
+.data-table tbody tr.selectable:hover {
+  background: #f4f7fc;
+}
+
+/* 行のどこをクリックしても選択できるよう、リンクを行全体に広げる */
+.data-table .row-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.data-table .row-link {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--color-navy-700);
+}
+
+.data-table tbody tr.is-selected {
+  background: #f0f4fb;
+  box-shadow: inset 3px 0 0 var(--color-gold-500);
+}
+
+.data-table tbody tr.is-selected:hover {
+  background: #eaf0fa;
+}
+
+.selection-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .link {
   color: var(--color-navy-700);
   font-weight: 700;

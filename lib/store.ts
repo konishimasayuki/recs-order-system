@@ -173,6 +173,8 @@ function fileWrite(state: AppState): void {
   // 書き込み中に落ちても既存データを壊さないよう、一時ファイル経由で差し替える
   const tmp = `${target}.${process.pid}.tmp`;
   try {
+    // 解決済みのディレクトリが後から消えている場合に備えて作り直す
+    fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(tmp, JSON.stringify(state, null, 2), "utf8");
     fs.renameSync(tmp, target);
   } catch (err) {
