@@ -29,7 +29,7 @@ export default function AppHeader({
     <div className="brand-bar">
       <div className="container">
         <div className="brand-bar-inner">
-          <div>
+          <div className="brand-id">
             <p className="brand-eyebrow">
               {user.role === "admin" ? "ORDER MANAGEMENT" : "ORDER PORTAL"}
             </p>
@@ -37,8 +37,12 @@ export default function AppHeader({
             <p className="brand-sub">{PRODUCT_NAME}</p>
           </div>
           <div className="brand-account">
-            <strong>{user.companyName}</strong>
-            {user.role === "admin" ? "受注管理者" : "発注アカウント"}（{user.loginId}）
+            <div className="brand-account-info">
+              <strong>{user.companyName}</strong>
+              <span>
+                {user.role === "admin" ? "受注管理者" : "発注アカウント"}（{user.loginId}）
+              </span>
+            </div>
             <form action={logoutAction}>
               <button type="submit" className="logout-link">
                 ログアウト
