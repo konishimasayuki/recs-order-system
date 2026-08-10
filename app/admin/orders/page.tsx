@@ -1,16 +1,18 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import ListFilter from "@/components/ListFilter";
+import { parseMulti } from "@/lib/filters";
 import Pagination, { clampPage } from "@/components/Pagination";
 import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { allOrders, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
-import { ORDER_STATUS_LABEL, OrderStatus, deliveredQuantity, formatDate, yen } from "@/lib/types";
+import { ORDER_STATUS_LABEL, OrderStatus, deliveredQuantity, formatDate } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_KEYS: OrderStatus[] = ["pending", "invoiced", "delivered", "cancelled"];
+/** 絞り込みに出す状況。納品完了は絞り込み対象外（全件表示には含まれる） */
+const FILTER_STATUSES: OrderStatus[] = ["pending", "invoiced", "cancelled"];
 
 const PER_PAGE = 20;
 
@@ -23,22 +25,23 @@ export default async function AdminOrdersPage({
   const state = await readState();
   const customers = state.users.filter((u) => u.role === "customer");
 
-  const statusFilter = searchParams.status || "all";
-  const companyFilter = searchParams.company || "all";
+  const statusSelected = parseMulti(searchParams.status, FILTER_STATUSES);
+  const companySelected = parseMulti(
+    searchParams.company,
+    customers.map((c) => c.id)
+  );
 
   let orders = allOrders(state);
-  if (statusFilter !== "all") {
-    orders = orders.filter((o) => o.status === (statusFilter as OrderStatus));
+  if (statusSelected.length > 0) {
+    orders = orders.filter((o) => statusSelected.includes(o.status));
   }
-  if (companyFilter !== "all") {
-    orders = orders.filter((o) => o.userId === companyFilter);
+  if (companySelected.length > 0) {
+    orders = orders.filter((o) => companySelected.includes(o.userId));
   }
 
   const summary = summarize(orders, state.deliveries);
   const page = clampPage(searchParams.page, orders.length, PER_PAGE);
   const pageOrders = orders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const countByStatus = (s: OrderStatus) =>
-    state.orders.filter((o) => o.status === s).length;
 
   return (
     <div className="page-shell">
@@ -51,8 +54,7 @@ export default async function AdminOrdersPage({
               <h2 className="card-title">受注一覧</h2>
               <p className="card-desc">
                 表示中 {summary.orderCount} 件／
-                {summary.orderedQuantity.toLocaleString("ja-JP")} 台 （納品済{" "}
-                {summary.deliveredQuantity.toLocaleString("ja-JP")} 台）
+                {summary.orderedQuantity.toLocaleString("ja-JP")} 台
               </p>
             </div>
             <ListFilter
@@ -60,23 +62,22 @@ export default async function AdminOrdersPage({
                 {
                   name: "status",
                   label: "状況",
-                  value: statusFilter,
-                  options: [
-                    { value: "all", label: `すべて（${state.orders.length} 件）` },
-                    ...STATUS_KEYS.map((s) => ({
-                      value: s,
-                      label: `${ORDER_STATUS_LABEL[s]}（${countByStatus(s)} 件）`
-                    }))
-                  ]
+                  values: statusSelected,
+                  columns: 3,
+                  options: FILTER_STATUSES.map((s) => ({
+                    value: s,
+                    label: ORDER_STATUS_LABEL[s]
+                  }))
                 },
                 {
                   name: "company",
                   label: "発注元",
-                  value: companyFilter,
-                  options: [
-                    { value: "all", label: "すべての発注元" },
-                    ...customers.map((c) => ({ value: c.id, label: c.companyName }))
-                  ]
+                  values: companySelected,
+                  columns: 2,
+                  options: customers.map((c) => ({
+                    value: c.id,
+                    label: c.companyName
+                  }))
                 }
               ]}
             />
@@ -86,19 +87,16 @@ export default async function AdminOrdersPage({
             <div className="empty-state">該当する受注はありません。</div>
           ) : (
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table pair-cards">
                 <thead>
                   <tr>
                     <th>注文番号</th>
                     <th>発注元</th>
                     <th>注文日</th>
+                    <th>納品希望日</th>
                     <th className="num">台数</th>
-                    <th className="num">納品済</th>
-                    <th className="num">単価</th>
-                    <th className="num">金額（税込）</th>
                     <th>状況</th>
                     <th>請求書</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,27 +104,23 @@ export default async function AdminOrdersPage({
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
                       <tr key={order.id} className="selectable">
-                        <td className="mono" data-label="注文番号">{order.orderNumber}</td>
-                        <td data-label="発注元">{order.companyName}</td>
-                        <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
-                        <td className="num" data-label="台数">{order.quantity}</td>
-                        <td className="num" data-label="納品済">{delivered}</td>
-                        <td className="num" data-label="単価">
-                          {order.unitPrice === null ? (
-                            <span className="muted">未入力</span>
-                          ) : (
-                            yen(order.unitPrice)
-                          )}
+                        <td className="mono" data-label="注文番号">
+                          <Link
+                            href={`/admin/orders/${order.id}`}
+                            className="row-link"
+                          >
+                            {order.orderNumber}
+                          </Link>
                         </td>
-                        <td
-                          className={order.unitPrice === null ? "num sm-empty" : "num"}
-                          data-label="金額（税込）"
-                        >
-                          {order.unitPrice === null ? (
-                            <span className="muted">—</span>
-                          ) : (
-                            yen(order.quantity * order.unitPrice)
-                          )}
+                        <td data-label="発注元">{order.companyName}</td>
+                        <td className="mono" data-label="注文日">
+                          {formatDate(order.orderedAt)}
+                        </td>
+                        <td className="mono" data-label="納品希望日">
+                          {order.desiredDeliveryDate || "—"}
+                        </td>
+                        <td className="num span-2" data-label="台数">
+                          {order.quantity} 台
                         </td>
                         <td data-label="状況">
                           <StatusBadge
@@ -149,11 +143,6 @@ export default async function AdminOrdersPage({
                             <span className="muted">未発行</span>
                           )}
                         </td>
-                        <td>
-                          <Link href={`/admin/orders/${order.id}`} className="row-link">
-                            詳細
-                          </Link>
-                        </td>
                       </tr>
                     );
                   })}
@@ -167,10 +156,12 @@ export default async function AdminOrdersPage({
             page={page}
             perPage={PER_PAGE}
             basePath="/admin/orders"
-            params={{ status: statusFilter, company: companyFilter }}
+            params={{
+              status: statusSelected.join(","),
+              company: companySelected.join(",")
+            }}
           />
         </div>
-
       </div>
     </div>
   );
