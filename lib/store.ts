@@ -250,6 +250,30 @@ async function reseed(db: Queryable): Promise<AppState> {
 
 // ---------------- Public API ----------------
 
+export interface StorageStatus {
+  mode: "postgres" | "file";
+  /** file モードでの保存先。まだ解決していなければ null */
+  directory: string | null;
+  /** 再起動・コールドスタートで消える場所に保存しているか */
+  ephemeral: boolean;
+}
+
+/**
+ * いま何処にデータを保存しているかを返す。
+ * DB未接続のまま運用してデータを失う事故を管理画面で気づけるようにするためのもの。
+ * 保存先はアクセスして初めて確定するため、readState() の後に呼ぶこと。
+ */
+export function getStorageStatus(): StorageStatus {
+  if (STORAGE_MODE === "postgres") {
+    return { mode: "postgres", directory: null, ephemeral: false };
+  }
+  return {
+    mode: "file",
+    directory: dataDir,
+    ephemeral: dataDir !== null && dataDir === EPHEMERAL_DIR
+  };
+}
+
 /** 読み取り専用でスナップショットを取得する */
 export async function readState(): Promise<AppState> {
   if (STORAGE_MODE === "file") return fileRead();
