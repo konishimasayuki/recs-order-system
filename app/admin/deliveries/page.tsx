@@ -69,9 +69,6 @@ export default async function AdminDeliveriesPage({
           <div className="card-head">
             <div className="card-head-text">
               <h2 className="card-title">納品一覧</h2>
-              <p className="card-desc">
-                納品の登録・取消は各注文の詳細画面から行います。
-              </p>
             </div>
             <ListFilter
               fields={[
@@ -109,7 +106,7 @@ export default async function AdminDeliveriesPage({
                   {pageDeliveries.map((d) => {
                     const order = orderMap.get(d.orderId);
                     return (
-                      <tr key={d.id}>
+                      <tr key={d.id} className={order ? "selectable" : undefined}>
                         <td className="mono" data-label="納品日">{d.deliveredAt}</td>
                         <td data-label="発注元">{order?.companyName ?? "—"}</td>
                         <td className="mono" data-label="注文番号">{order?.orderNumber ?? "—"}</td>
@@ -123,7 +120,7 @@ export default async function AdminDeliveriesPage({
                         </td>
                         <td>
                           {order && (
-                            <Link href={`/admin/orders/${order.id}`} className="link">
+                            <Link href={`/admin/orders/${order.id}`} className="row-link">
                               注文詳細
                             </Link>
                           )}

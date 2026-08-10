@@ -116,9 +116,6 @@ export default async function AdminDashboard() {
               <h2 className="card-title">
                 対応中の受注（{needsActionAll.length} 件）
               </h2>
-              <p className="card-desc">
-                請求書発行または納品が完了していない注文を、古い順に表示しています。
-              </p>
             </div>
             <Link href="/admin/orders" className="btn btn-outline btn-sm">
               受注一覧へ
@@ -146,7 +143,7 @@ export default async function AdminDashboard() {
                   {needsAction.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
-                      <tr key={order.id}>
+                      <tr key={order.id} className="selectable">
                         <td className="mono" data-label="注文番号">{order.orderNumber}</td>
                         <td data-label="発注元">{order.companyName}</td>
                         <td className="mono" data-label="注文日">
@@ -169,7 +166,7 @@ export default async function AdminDashboard() {
                           />
                         </td>
                         <td>
-                          <Link href={`/admin/orders/${order.id}`} className="link">
+                          <Link href={`/admin/orders/${order.id}`} className="row-link">
                             処理する
                           </Link>
                         </td>

@@ -118,7 +118,7 @@ export default async function CustomerDashboard({
                   {recent.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
-                      <tr key={order.id}>
+                      <tr key={order.id} className="selectable">
                         <td className="mono" data-label="注文番号">{order.orderNumber}</td>
                         <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
                         <td className="num" data-label="台数">{order.quantity}</td>
@@ -138,7 +138,7 @@ export default async function CustomerDashboard({
                           />
                         </td>
                         <td>
-                          <Link href={`/orders/${order.id}`} className="link">
+                          <Link href={`/orders/${order.id}`} className="row-link">
                             詳細
                           </Link>
                         </td>
