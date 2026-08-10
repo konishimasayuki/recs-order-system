@@ -105,7 +105,7 @@ export default async function AdminOrdersPage({
                   {pageOrders.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
-                      <tr key={order.id}>
+                      <tr key={order.id} className="selectable">
                         <td className="mono" data-label="注文番号">{order.orderNumber}</td>
                         <td data-label="発注元">{order.companyName}</td>
                         <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
@@ -150,7 +150,7 @@ export default async function AdminOrdersPage({
                           )}
                         </td>
                         <td>
-                          <Link href={`/admin/orders/${order.id}`} className="link">
+                          <Link href={`/admin/orders/${order.id}`} className="row-link">
                             詳細
                           </Link>
                         </td>

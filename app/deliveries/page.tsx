@@ -83,7 +83,7 @@ export default async function CustomerDeliveriesPage({
                   {pageDeliveries.map((d) => {
                     const order = orderMap.get(d.orderId);
                     return (
-                      <tr key={d.id}>
+                      <tr key={d.id} className={order ? "selectable" : undefined}>
                         <td className="mono" data-label="納品日">{d.deliveredAt}</td>
                         <td className="mono" data-label="注文番号">{order?.orderNumber ?? "—"}</td>
                         <td className="num" data-label="納品台数">{d.quantity} 台</td>
@@ -96,7 +96,7 @@ export default async function CustomerDeliveriesPage({
                         </td>
                         <td>
                           {order && (
-                            <Link href={`/orders/${order.id}`} className="link">
+                            <Link href={`/orders/${order.id}`} className="row-link">
                               注文詳細
                             </Link>
                           )}

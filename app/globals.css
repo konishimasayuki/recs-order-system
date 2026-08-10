@@ -1171,6 +1171,12 @@ textarea:focus {
     inset: 0;
   }
 
+  /* カード内の別リンク（請求書PDF等）は全面リンクより手前に置き、個別に押せるようにする */
+  .data-table tbody tr.selectable a:not(.row-link) {
+    position: relative;
+    z-index: 1;
+  }
+
   .data-table tbody td:not([data-label]) {
     justify-content: flex-end;
   }
