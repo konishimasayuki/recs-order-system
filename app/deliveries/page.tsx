@@ -20,6 +20,10 @@ export default async function CustomerDeliveriesPage() {
       <AppHeader user={user} current="/deliveries" />
 
       <div className="container">
+        <Link href="/orders" className="back-link">
+          ← ダッシュボードに戻る
+        </Link>
+
         <div className="stat-grid">
           <div className="stat-card accent">
             <p className="stat-label">累計納品台数</p>
