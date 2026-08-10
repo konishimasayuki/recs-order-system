@@ -1,16 +1,19 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import ListFilter from "@/components/ListFilter";
+import Pagination, { clampPage } from "@/components/Pagination";
 import { requireUser } from "@/lib/auth";
 import { allOrders, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
+const PER_PAGE = 20;
+
 export default async function AdminDeliveriesPage({
   searchParams
 }: {
-  searchParams: { company?: string };
+  searchParams: { company?: string; page?: string };
 }) {
   const user = await requireUser("admin");
   const state = await readState();
@@ -30,6 +33,8 @@ export default async function AdminDeliveriesPage({
   }
 
   const summary = summarize(orders, state.deliveries);
+  const page = clampPage(searchParams.page, deliveries.length, PER_PAGE);
+  const pageDeliveries = deliveries.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
     <div className="page-shell">
@@ -101,7 +106,7 @@ export default async function AdminDeliveriesPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {deliveries.map((d) => {
+                  {pageDeliveries.map((d) => {
                     const order = orderMap.get(d.orderId);
                     return (
                       <tr key={d.id}>
@@ -130,6 +135,14 @@ export default async function AdminDeliveriesPage({
               </table>
             </div>
           )}
+
+          <Pagination
+            total={deliveries.length}
+            page={page}
+            perPage={PER_PAGE}
+            basePath="/admin/deliveries"
+            params={{ company: companyFilter }}
+          />
         </div>
       </div>
     </div>
