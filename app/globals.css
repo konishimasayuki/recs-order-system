@@ -767,6 +767,75 @@ textarea:focus {
 
 /* ---------- 一覧の絞り込みフォーム ---------- */
 
+/* カード見出し行。左に題名、右に絞り込みボタン、開いた条件は下の全幅 */
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.card-head-text {
+  /* 見出しが長くてもボタンを右上の同じ行に留める */
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.card-head-text .card-title,
+.card-head-text .card-desc {
+  margin-bottom: 0;
+}
+
+.card-head-text .card-title {
+  margin-bottom: 2px;
+}
+
+.filter-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-toggle:hover {
+  border-color: var(--color-navy-700);
+}
+
+.filter-toggle.active {
+  border-color: var(--color-gold-500);
+  background: #fdf8ee;
+  color: var(--color-gold-600);
+}
+
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-gold-500);
+  color: #fff;
+  font-size: 11px;
+}
+
+.card-head .filter-bar {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;

@@ -1,19 +1,34 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
+import ListFilter from "@/components/ListFilter";
 import { requireUser } from "@/lib/auth";
 import { allOrders, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDeliveriesPage() {
+export default async function AdminDeliveriesPage({
+  searchParams
+}: {
+  searchParams: { company?: string };
+}) {
   const user = await requireUser("admin");
   const state = await readState();
+  const customers = state.users.filter((u) => u.role === "customer");
   const orders = allOrders(state);
   const orderMap = new Map(orders.map((o) => [o.id, o]));
-  const deliveries = [...state.deliveries].sort((a, b) =>
+
+  const companyFilter = searchParams.company || "all";
+
+  let deliveries = [...state.deliveries].sort((a, b) =>
     b.deliveredAt.localeCompare(a.deliveredAt)
   );
+  if (companyFilter !== "all") {
+    deliveries = deliveries.filter(
+      (d) => orderMap.get(d.orderId)?.userId === companyFilter
+    );
+  }
+
   const summary = summarize(orders, state.deliveries);
 
   return (
@@ -39,20 +54,37 @@ export default async function AdminDeliveriesPage() {
           <div className="stat-card">
             <p className="stat-label">納品回数</p>
             <div className="stat-value">
-              {deliveries.length.toLocaleString("ja-JP")}
+              {state.deliveries.length.toLocaleString("ja-JP")}
               <small>回</small>
             </div>
           </div>
         </div>
 
         <div className="card">
-          <h2 className="card-title">納品一覧</h2>
-          <p className="card-desc">
-            納品の登録・取消は各注文の詳細画面から行います。
-          </p>
+          <div className="card-head">
+            <div className="card-head-text">
+              <h2 className="card-title">納品一覧</h2>
+              <p className="card-desc">
+                納品の登録・取消は各注文の詳細画面から行います。
+              </p>
+            </div>
+            <ListFilter
+              fields={[
+                {
+                  name: "company",
+                  label: "発注元",
+                  value: companyFilter,
+                  options: [
+                    { value: "all", label: "すべての発注元" },
+                    ...customers.map((c) => ({ value: c.id, label: c.companyName }))
+                  ]
+                }
+              ]}
+            />
+          </div>
 
           {deliveries.length === 0 ? (
-            <div className="empty-state">まだ納品登録はありません。</div>
+            <div className="empty-state">該当する納品はありません。</div>
           ) : (
             <div className="table-wrap">
               <table className="data-table">

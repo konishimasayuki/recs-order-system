@@ -1,18 +1,40 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
+import ListFilter from "@/components/ListFilter";
 import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { ordersOf, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
-import { deliveredQuantity, formatDate, yen } from "@/lib/types";
+import {
+  ORDER_STATUS_LABEL,
+  OrderStatus,
+  deliveredQuantity,
+  formatDate,
+  yen
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrderHistoryPage() {
+const STATUS_KEYS: OrderStatus[] = ["pending", "invoiced", "delivered", "cancelled"];
+
+export default async function OrderHistoryPage({
+  searchParams
+}: {
+  searchParams: { status?: string };
+}) {
   const user = await requireUser("customer");
   const state = await readState();
-  const orders = ordersOf(state, user.id);
+  const allMine = ordersOf(state, user.id);
+
+  const statusFilter = searchParams.status || "all";
+  const orders =
+    statusFilter === "all"
+      ? allMine
+      : allMine.filter((o) => o.status === (statusFilter as OrderStatus));
+
   const summary = summarize(orders, state.deliveries);
+  const countByStatus = (s: OrderStatus) =>
+    allMine.filter((o) => o.status === s).length;
 
   return (
     <div className="page-shell">
@@ -24,19 +46,46 @@ export default async function OrderHistoryPage() {
         </Link>
 
         <div className="card">
-          <h2 className="card-title">注文履歴</h2>
-          <p className="card-desc">
-            全 {summary.orderCount} 件／累計 {summary.orderedQuantity.toLocaleString("ja-JP")} 台
-            （うち納品済 {summary.deliveredQuantity.toLocaleString("ja-JP")} 台）
-          </p>
+          <div className="card-head">
+            <div className="card-head-text">
+              <h2 className="card-title">注文履歴</h2>
+              <p className="card-desc">
+                全 {summary.orderCount} 件／累計{" "}
+                {summary.orderedQuantity.toLocaleString("ja-JP")} 台 （うち納品済{" "}
+                {summary.deliveredQuantity.toLocaleString("ja-JP")} 台）
+              </p>
+            </div>
+            <ListFilter
+              fields={[
+                {
+                  name: "status",
+                  label: "状況",
+                  value: statusFilter,
+                  options: [
+                    { value: "all", label: `すべて（${allMine.length} 件）` },
+                    ...STATUS_KEYS.map((s) => ({
+                      value: s,
+                      label: `${ORDER_STATUS_LABEL[s]}（${countByStatus(s)} 件）`
+                    }))
+                  ]
+                }
+              ]}
+            />
+          </div>
 
           {orders.length === 0 ? (
             <div className="empty-state">
-              まだ注文がありません。
-              <br />
-              <Link href="/orders/new" className="link">
-                新規注文を作成する
-              </Link>
+              {allMine.length === 0 ? (
+                <>
+                  まだ注文がありません。
+                  <br />
+                  <Link href="/orders/new" className="link">
+                    新規注文を作成する
+                  </Link>
+                </>
+              ) : (
+                "該当する注文はありません。"
+              )}
             </div>
           ) : (
             <div className="table-wrap">

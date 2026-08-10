@@ -1,6 +1,6 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
-import OrdersFilter from "@/components/OrdersFilter";
+import ListFilter from "@/components/ListFilter";
 import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { allOrders, summarize } from "@/lib/queries";
@@ -41,27 +41,41 @@ export default async function AdminOrdersPage({
 
       <div className="container">
         <div className="card">
-          <h2 className="card-title">受注一覧</h2>
-          <p className="card-desc">
-            表示中 {summary.orderCount} 件／{summary.orderedQuantity.toLocaleString("ja-JP")} 台
-            （納品済 {summary.deliveredQuantity.toLocaleString("ja-JP")} 台）
-          </p>
-
-          <OrdersFilter
-            status={statusFilter}
-            company={companyFilter}
-            statusOptions={[
-              { value: "all", label: `すべて（${state.orders.length} 件）` },
-              ...STATUS_KEYS.map((s) => ({
-                value: s,
-                label: `${ORDER_STATUS_LABEL[s]}（${countByStatus(s)} 件）`
-              }))
-            ]}
-            companyOptions={[
-              { value: "all", label: "すべての発注元" },
-              ...customers.map((c) => ({ value: c.id, label: c.companyName }))
-            ]}
-          />
+          <div className="card-head">
+            <div className="card-head-text">
+              <h2 className="card-title">受注一覧</h2>
+              <p className="card-desc">
+                表示中 {summary.orderCount} 件／
+                {summary.orderedQuantity.toLocaleString("ja-JP")} 台 （納品済{" "}
+                {summary.deliveredQuantity.toLocaleString("ja-JP")} 台）
+              </p>
+            </div>
+            <ListFilter
+              fields={[
+                {
+                  name: "status",
+                  label: "状況",
+                  value: statusFilter,
+                  options: [
+                    { value: "all", label: `すべて（${state.orders.length} 件）` },
+                    ...STATUS_KEYS.map((s) => ({
+                      value: s,
+                      label: `${ORDER_STATUS_LABEL[s]}（${countByStatus(s)} 件）`
+                    }))
+                  ]
+                },
+                {
+                  name: "company",
+                  label: "発注元",
+                  value: companyFilter,
+                  options: [
+                    { value: "all", label: "すべての発注元" },
+                    ...customers.map((c) => ({ value: c.id, label: c.companyName }))
+                  ]
+                }
+              ]}
+            />
+          </div>
 
           {orders.length === 0 ? (
             <div className="empty-state">該当する受注はありません。</div>
