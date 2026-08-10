@@ -276,7 +276,7 @@ export default async function AdminOrderDetail({
             <>
               <h3 className="section-heading">納品履歴</h3>
               <div className="table-wrap">
-                <table className="data-table" style={{ minWidth: 520 }}>
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>納品日</th>
@@ -289,10 +289,10 @@ export default async function AdminOrderDetail({
                   <tbody>
                     {deliveries.map((d) => (
                       <tr key={d.id}>
-                        <td className="mono">{d.deliveredAt}</td>
-                        <td className="num">{d.quantity} 台</td>
-                        <td>{d.trackingNumber || "—"}</td>
-                        <td>{d.note || "—"}</td>
+                        <td className="mono" data-label="納品日">{d.deliveredAt}</td>
+                        <td className="num" data-label="台数">{d.quantity} 台</td>
+                        <td data-label="送り状番号">{d.trackingNumber || "—"}</td>
+                        <td data-label="備考">{d.note || "—"}</td>
                         <td>
                           <form action={deleteDeliveryAction}>
                             <input type="hidden" name="deliveryId" value={d.id} />

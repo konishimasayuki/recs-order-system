@@ -177,7 +177,7 @@ export default async function CustomerOrderDetail({
             <div className="empty-state">まだ納品登録はありません。</div>
           ) : (
             <div className="table-wrap">
-              <table className="data-table" style={{ minWidth: 480 }}>
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>納品日</th>
@@ -189,10 +189,10 @@ export default async function CustomerOrderDetail({
                 <tbody>
                   {deliveries.map((d) => (
                     <tr key={d.id}>
-                      <td className="mono">{d.deliveredAt}</td>
-                      <td className="num">{d.quantity} 台</td>
-                      <td>{d.trackingNumber || "—"}</td>
-                      <td>{d.note || "—"}</td>
+                      <td className="mono" data-label="納品日">{d.deliveredAt}</td>
+                      <td className="num" data-label="台数">{d.quantity} 台</td>
+                      <td data-label="送り状番号">{d.trackingNumber || "—"}</td>
+                      <td data-label="備考">{d.note || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
