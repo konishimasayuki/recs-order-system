@@ -140,13 +140,10 @@ export default async function AdminOrderDetail({
 
         {order.unitPrice === null && customer?.defaultUnitPrice != null ? (
           /* 注文にはまだ単価が保存されていないが、発注元に標準単価がある。
-             大きな入力フォームは出さず、標準単価での確定をワンタップにする */
+             標準単価がそのまま適用される（請求書発行時に自動確定）ため、
+             確認表示と編集ボタンだけを出す */
           <div className="card">
             <h2 className="card-title">単価</h2>
-            <p className="card-desc">
-              {customer.companyName} の標準単価が設定されています。
-              この単価で確定するか、「単価を編集する」から変更してください。
-            </p>
 
             <table className="detail-table" style={{ marginBottom: 18 }}>
               <tbody>
@@ -155,21 +152,13 @@ export default async function AdminOrderDetail({
                   <td className="amount">{yen(customer.defaultUnitPrice)}</td>
                 </tr>
                 <tr className="grand-total">
-                  <th>請求合計（税込・見込み）</th>
+                  <th>請求合計（税込）</th>
                   <td className="amount">
                     {yen(calcAmounts(order.quantity, customer.defaultUnitPrice).totalAmount)}
                   </td>
                 </tr>
               </tbody>
             </table>
-
-            <form action={updateUnitPriceAction} style={{ marginBottom: 14 }}>
-              <input type="hidden" name="orderId" value={order.id} />
-              <input type="hidden" name="unitPrice" value={customer.defaultUnitPrice} />
-              <SubmitButton className="btn btn-primary">
-                標準単価（{yen(customer.defaultUnitPrice)}）で保存する
-              </SubmitButton>
-            </form>
 
             <details className="edit-details">
               <summary className="btn btn-outline btn-sm">単価を編集する</summary>

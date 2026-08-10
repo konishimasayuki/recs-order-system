@@ -148,7 +148,16 @@ export async function issueInvoiceAction(formData: FormData) {
   const result = await mutateState<"ok" | "noprice" | "notfound">((state) => {
     const order = state.orders.find((o) => o.id === orderId);
     if (!order) return "notfound";
-    if (order.unitPrice === null) return "noprice";
+    if (order.unitPrice === null) {
+      // 単価が未保存でも発注元に標準単価があればそれを適用して発行する。
+      // 詳細画面は標準単価をそのまま表示しており、保存操作を挟ませない
+      const customer = state.users.find((u) => u.id === order.userId);
+      if (customer?.defaultUnitPrice != null) {
+        order.unitPrice = customer.defaultUnitPrice;
+      } else {
+        return "noprice";
+      }
+    }
     if (!order.invoiceNumber) {
       order.invoiceNumber = nextInvoiceNumber(state);
       order.invoicedAt = new Date().toISOString();
