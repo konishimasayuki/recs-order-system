@@ -15,11 +15,31 @@ export default async function AdminDashboard() {
   const storage = getStorageStatus();
   const orders = allOrders(state);
   const summary = summarize(orders, state.deliveries);
-  const rollup = rollupByCustomer(state);
-  const needsAction = orders.filter(
-    (o) => o.status !== "cancelled" && o.status !== "delivered"
-  );
   const sellerIncomplete = !state.seller.address || !state.seller.registrationNumber;
+
+  /**
+   * ダッシュボードは「今なにをすべきか」を見る場所なので、一覧は上限を切り、
+   * 全量は受注一覧に任せる。取引先や受注が増えても画面が際限なく伸びない。
+   */
+  const NEEDS_ACTION_LIMIT = 8;
+  const ROLLUP_LIMIT = 5;
+
+  // 対応中は古い注文ほど急ぎのため、古い順に並べて上位だけ見せる
+  const needsActionAll = orders
+    .filter((o) => o.status !== "cancelled" && o.status !== "delivered")
+    .reverse();
+  const needsAction = needsActionAll.slice(0, NEEDS_ACTION_LIMIT);
+
+  // 注文実績のない発注先は集計に出さない。納品残の多い順に上位だけ見せる
+  const rollupActive = rollupByCustomer(state)
+    .filter((r) => r.orderCount > 0)
+    .sort(
+      (a, b) =>
+        b.orderedQuantity - b.deliveredQuantity - (a.orderedQuantity - a.deliveredQuantity) ||
+        b.orderedQuantity - a.orderedQuantity
+    );
+  const rollup = rollupActive.slice(0, ROLLUP_LIMIT);
+  const rollupHidden = rollupActive.length - rollup.length;
 
   return (
     <div className="page-shell">
@@ -91,8 +111,19 @@ export default async function AdminDashboard() {
         </div>
 
         <div className="card">
-          <h2 className="card-title">対応中の受注</h2>
-          <p className="card-desc">請求書発行または納品が完了していない注文です。</p>
+          <div className="card-head">
+            <div className="card-head-text">
+              <h2 className="card-title">
+                対応中の受注（{needsActionAll.length} 件）
+              </h2>
+              <p className="card-desc">
+                請求書発行または納品が完了していない注文を、古い順に表示しています。
+              </p>
+            </div>
+            <Link href="/admin/orders" className="btn btn-outline btn-sm">
+              受注一覧へ
+            </Link>
+          </div>
 
           {needsAction.length === 0 ? (
             <div className="empty-state">対応が必要な受注はありません。</div>
@@ -149,12 +180,23 @@ export default async function AdminDashboard() {
               </table>
             </div>
           )}
+
+          {needsActionAll.length > needsAction.length && (
+            <p className="muted" style={{ fontSize: 12.5, margin: "12px 0 0" }}>
+              最初の {needsAction.length} 件を表示しています。残り{" "}
+              {needsActionAll.length - needsAction.length} 件は
+              <Link href="/admin/orders" className="link">
+                受注一覧
+              </Link>
+              で確認できます。
+            </p>
+          )}
         </div>
 
         <div className="card">
           <h2 className="card-title">発注元別の累計</h2>
           {rollup.length === 0 ? (
-            <div className="empty-state">発注アカウントが登録されていません。</div>
+            <div className="empty-state">まだ受注がありません。</div>
           ) : (
             <div className="table-wrap">
               <table className="data-table">
@@ -184,6 +226,17 @@ export default async function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {rollupHidden > 0 && (
+            <p className="muted" style={{ fontSize: 12.5, margin: "12px 0 0" }}>
+              納品残の多い {rollup.length} 社を表示しています（ほか {rollupHidden} 社）。
+              発注元ごとの明細は
+              <Link href="/admin/orders" className="link">
+                受注一覧
+              </Link>
+              の絞り込みで確認できます。
+            </p>
           )}
         </div>
 

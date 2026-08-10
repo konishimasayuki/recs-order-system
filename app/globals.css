@@ -1069,8 +1069,11 @@ textarea:focus {
   }
 
   .nav-tabs a {
+    /* タブを行いっぱいに均等配置し、右側に空きを残さない */
+    flex: 1 1 0;
+    text-align: center;
     white-space: nowrap;
-    padding: 10px 12px;
+    padding: 10px 4px;
     font-size: 13px;
   }
 
