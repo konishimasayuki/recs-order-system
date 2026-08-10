@@ -37,12 +37,12 @@ function initialState(): AppState {
     users: [
       {
         id: "u_miami",
-        loginId: "info@miamihoidings.co.jp",
+        loginId: "info@miamiholdings.co.jp",
         passwordHash: hashPassword("miami0383"),
         role: "admin",
         companyName: "MIAMIホールディングス株式会社",
         contactName: "",
-        email: "info@miamihoidings.co.jp",
+        email: "info@miamiholdings.co.jp",
         postalCode: "",
         address: "",
         tel: "",
@@ -88,10 +88,32 @@ function initialState(): AppState {
   };
 }
 
+/**
+ * 綴りを誤っていた受注アカウントのログインIDを正しいドメインへ移行する。
+ * 初期データを直しただけでは、既に作成済みのDBには反映されないため
+ * 読み込みのたびに旧IDを置き換える。
+ */
+const LOGIN_ID_MIGRATIONS: Record<string, string> = {
+  "info@miamihoidings.co.jp": "info@miamiholdings.co.jp"
+};
+
+function migrateUsers(users: AppState["users"]): AppState["users"] {
+  return users.map((u) => {
+    const renamed = LOGIN_ID_MIGRATIONS[u.loginId.toLowerCase()];
+    if (!renamed) return u;
+    return {
+      ...u,
+      loginId: renamed,
+      // 連絡先が旧IDと同じままなら合わせて直す（個別に変更済みなら触らない）
+      email: LOGIN_ID_MIGRATIONS[u.email.toLowerCase()] ?? u.email
+    };
+  });
+}
+
 /** 後から追加したフィールドの欠落を埋める（既存データの前方互換） */
 function normalize(state: AppState): AppState {
   return {
-    users: state.users ?? [],
+    users: migrateUsers(state.users ?? []),
     orders: (state.orders ?? []).map((o) => ({
       ...o,
       note: o.note ?? "",

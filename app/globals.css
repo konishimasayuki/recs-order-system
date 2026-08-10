@@ -720,34 +720,40 @@ textarea:focus {
 
 /* ---------- 一覧から1件を選ぶテーブル ---------- */
 
-.data-table tbody tr.selectable {
-  position: relative;
-  cursor: pointer;
-}
-
-.data-table tbody tr.selectable:hover {
+.data-table tbody tr.selectable:hover td {
   background: #f4f7fc;
 }
 
-/* 行のどこをクリックしても選択できるよう、リンクを行全体に広げる */
-.data-table .row-link::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
+/*
+ * 以前は tr を position:relative にし、擬似要素を行全体へ広げて
+ * どこを押しても選択できるようにしていた。
+ * ただし iOS Safari では tr が包含ブロックにならず、透明なリンクが
+ * 画面全体を覆って一切タップできなくなる。
+ * リンクはセル内に収め、余白で押しやすさを確保する。
+ */
 .data-table .row-link {
+  display: block;
+  padding: 10px 0;
+  margin: -10px 0;
   font-weight: 700;
   text-decoration: none;
   color: var(--color-navy-700);
 }
 
-.data-table tbody tr.is-selected {
+.data-table .row-link:hover {
+  text-decoration: underline;
+}
+
+.data-table tbody tr.is-selected td {
   background: #f0f4fb;
+}
+
+/* 選択中の目印。tr への box-shadow は border-collapse 下で描画されない */
+.data-table tbody tr.is-selected td:first-child {
   box-shadow: inset 3px 0 0 var(--color-gold-500);
 }
 
-.data-table tbody tr.is-selected:hover {
+.data-table tbody tr.is-selected:hover td {
   background: #eaf0fa;
 }
 
@@ -755,7 +761,8 @@ textarea:focus {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: 8px 16px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
