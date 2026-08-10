@@ -79,7 +79,7 @@ export default async function AdminAccountsPage({
                 </p>
 
                 <div className="table-wrap">
-                  <table className="data-table" style={{ minWidth: 620 }}>
+                  <table className="data-table">
                     <thead>
                       <tr>
                         <th>ID</th>
@@ -95,8 +95,8 @@ export default async function AdminAccountsPage({
                           key={c.id}
                           className={`selectable${selected?.id === c.id ? " is-selected" : ""}`}
                         >
-                          <td className="mono">{c.loginId}</td>
-                          <td>
+                          <td className="mono" data-label="ID">{c.loginId}</td>
+                          <td data-label="会社名">
                             <Link
                               href={`/admin/accounts?select=${c.id}`}
                               className="row-link"
@@ -105,21 +105,23 @@ export default async function AdminAccountsPage({
                               {c.companyName}
                             </Link>
                           </td>
-                          <td className="num">
+                          <td className="num" data-label="標準単価">
                             {c.defaultUnitPrice === null ? (
                               <span className="muted">未設定</span>
                             ) : (
                               yen(c.defaultUnitPrice)
                             )}
                           </td>
-                          <td>
+                          <td data-label="状態">
                             {c.active ? (
                               <span className="badge badge-delivered">有効</span>
                             ) : (
                               <span className="badge badge-cancelled">停止中</span>
                             )}
                           </td>
-                          <td className="mono">{formatDate(c.createdAt)}</td>
+                          <td className="mono" data-label="登録日">
+                            {formatDate(c.createdAt)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

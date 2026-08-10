@@ -73,13 +73,13 @@ export default async function AdminDeliveriesPage() {
                     const order = orderMap.get(d.orderId);
                     return (
                       <tr key={d.id}>
-                        <td className="mono">{d.deliveredAt}</td>
-                        <td>{order?.companyName ?? "—"}</td>
-                        <td className="mono">{order?.orderNumber ?? "—"}</td>
-                        <td className="num">{d.quantity} 台</td>
-                        <td className="num">{order?.quantity ?? "—"} 台</td>
-                        <td>{d.trackingNumber || "—"}</td>
-                        <td>{d.note || "—"}</td>
+                        <td className="mono" data-label="納品日">{d.deliveredAt}</td>
+                        <td data-label="発注元">{order?.companyName ?? "—"}</td>
+                        <td className="mono" data-label="注文番号">{order?.orderNumber ?? "—"}</td>
+                        <td className="num" data-label="納品台数">{d.quantity} 台</td>
+                        <td className="num" data-label="注文台数">{order?.quantity ?? "—"} 台</td>
+                        <td data-label="送り状番号">{d.trackingNumber || "—"}</td>
+                        <td data-label="備考">{d.note || "—"}</td>
                         <td>
                           {order && (
                             <Link href={`/admin/orders/${order.id}`} className="link">

@@ -114,33 +114,33 @@ export default async function AdminOrdersPage({
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
                       <tr key={order.id}>
-                        <td className="mono">{order.orderNumber}</td>
-                        <td>{order.companyName}</td>
-                        <td className="mono">{formatDate(order.orderedAt)}</td>
-                        <td className="num">{order.quantity}</td>
-                        <td className="num">{delivered}</td>
-                        <td className="num">
+                        <td className="mono" data-label="注文番号">{order.orderNumber}</td>
+                        <td data-label="発注元">{order.companyName}</td>
+                        <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
+                        <td className="num" data-label="台数">{order.quantity}</td>
+                        <td className="num" data-label="納品済">{delivered}</td>
+                        <td className="num" data-label="単価">
                           {order.unitPrice === null ? (
                             <span className="muted">未入力</span>
                           ) : (
                             yen(order.unitPrice)
                           )}
                         </td>
-                        <td className="num">
+                        <td className="num" data-label="金額（税込）">
                           {order.unitPrice === null ? (
                             <span className="muted">—</span>
                           ) : (
                             yen(order.quantity * order.unitPrice)
                           )}
                         </td>
-                        <td>
+                        <td data-label="状況">
                           <StatusBadge
                             status={order.status}
                             delivered={delivered}
                             quantity={order.quantity}
                           />
                         </td>
-                        <td className="mono">
+                        <td className="mono" data-label="請求書">
                           {order.invoiceNumber ? (
                             <a
                               className="link"

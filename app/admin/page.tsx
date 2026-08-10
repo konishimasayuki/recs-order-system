@@ -116,19 +116,21 @@ export default async function AdminDashboard() {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
                       <tr key={order.id}>
-                        <td className="mono">{order.orderNumber}</td>
-                        <td>{order.companyName}</td>
-                        <td className="mono">{formatDate(order.orderedAt)}</td>
-                        <td className="num">{order.quantity}</td>
-                        <td className="num">{delivered}</td>
-                        <td className="num">
+                        <td className="mono" data-label="注文番号">{order.orderNumber}</td>
+                        <td data-label="発注元">{order.companyName}</td>
+                        <td className="mono" data-label="注文日">
+                          {formatDate(order.orderedAt)}
+                        </td>
+                        <td className="num" data-label="台数">{order.quantity}</td>
+                        <td className="num" data-label="納品済">{delivered}</td>
+                        <td className="num" data-label="単価">
                           {order.unitPrice === null ? (
                             <span className="muted">未入力</span>
                           ) : (
                             yen(order.unitPrice)
                           )}
                         </td>
-                        <td>
+                        <td data-label="状況">
                           <StatusBadge
                             status={order.status}
                             delivered={delivered}
@@ -155,7 +157,7 @@ export default async function AdminDashboard() {
             <div className="empty-state">発注アカウントが登録されていません。</div>
           ) : (
             <div className="table-wrap">
-              <table className="data-table" style={{ minWidth: 520 }}>
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>発注元</th>
@@ -168,11 +170,13 @@ export default async function AdminDashboard() {
                 <tbody>
                   {rollup.map((row) => (
                     <tr key={row.userId}>
-                      <td>{row.companyName}</td>
-                      <td className="num">{row.orderCount}</td>
-                      <td className="num">{row.orderedQuantity} 台</td>
-                      <td className="num">{row.deliveredQuantity} 台</td>
-                      <td className="num">
+                      <td data-label="発注元">{row.companyName}</td>
+                      <td className="num" data-label="注文件数">{row.orderCount}</td>
+                      <td className="num" data-label="累計受注台数">{row.orderedQuantity} 台</td>
+                      <td className="num" data-label="累計納品台数">
+                        {row.deliveredQuantity} 台
+                      </td>
+                      <td className="num" data-label="納品残">
                         {Math.max(0, row.orderedQuantity - row.deliveredQuantity)} 台
                       </td>
                     </tr>
