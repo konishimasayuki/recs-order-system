@@ -1,10 +1,9 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
-import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { allOrders, rollupByCustomer, summarize } from "@/lib/queries";
 import { getStorageStatus, readState } from "@/lib/store";
-import { deliveredQuantity, formatDate, yen } from "@/lib/types";
+import { deliveredQuantity } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -17,18 +16,36 @@ export default async function AdminDashboard() {
   const summary = summarize(orders, state.deliveries);
   const sellerIncomplete = !state.seller.address || !state.seller.registrationNumber;
 
-  /**
-   * ダッシュボードは「今なにをすべきか」を見る場所なので、一覧は上限を切り、
-   * 全量は受注一覧に任せる。取引先や受注が増えても画面が際限なく伸びない。
-   */
-  const NEEDS_ACTION_LIMIT = 8;
   const ROLLUP_LIMIT = 5;
 
-  // 対応中は古い注文ほど急ぎのため、古い順に並べて上位だけ見せる
-  const needsActionAll = orders
-    .filter((o) => o.status !== "cancelled" && o.status !== "delivered")
-    .reverse();
-  const needsAction = needsActionAll.slice(0, NEEDS_ACTION_LIMIT);
+  /**
+   * 対応中（請求書発行または納品が未完了）の受注を発注元ごとに集計する。
+   * 1件ずつ並べると受注が増えたとき画面が際限なく伸びるため、
+   * ダッシュボードでは会社単位のまとめだけを見せ、明細は受注一覧に任せる。
+   */
+  const needsActionAll = orders.filter(
+    (o) => o.status !== "cancelled" && o.status !== "delivered"
+  );
+
+  const byCompany = new Map<
+    string,
+    { companyName: string; count: number; quantity: number; delivered: number }
+  >();
+  for (const o of needsActionAll) {
+    const row =
+      byCompany.get(o.userId) ??
+      { companyName: o.companyName, count: 0, quantity: 0, delivered: 0 };
+    row.count += 1;
+    row.quantity += o.quantity;
+    row.delivered += deliveredQuantity(o.id, state.deliveries);
+    byCompany.set(o.userId, row);
+  }
+  const needsActionByCompany = [...byCompany.entries()]
+    .map(([userId, r]) => ({ userId, ...r }))
+    .sort(
+      (a, b) =>
+        b.quantity - b.delivered - (a.quantity - a.delivered) || b.count - a.count
+    );
 
   // 注文実績のない発注先は集計に出さない。納品残の多い順に上位だけ見せる
   const rollupActive = rollupByCustomer(state)
@@ -63,8 +80,8 @@ export default async function AdminDashboard() {
             <strong>請求元情報が未設定です</strong>
             <p>
               請求書PDFに住所・登録番号・振込先が印字されません。
-              <Link href="/admin/settings" className="link">
-                請求元設定
+              <Link href="/admin/settings?tab=seller" className="link">
+                設定
               </Link>
               から入力してください。
             </p>
@@ -72,41 +89,15 @@ export default async function AdminDashboard() {
         )}
 
         <div className="stat-grid">
-          <div className="stat-card accent">
-            <p className="stat-label">累計受注台数</p>
-            <div className="stat-value">
-              {summary.orderedQuantity.toLocaleString("ja-JP")}
-              <small>台</small>
-            </div>
-            <p className="stat-note" style={{ color: "#b9c1d1" }}>
-              受注 {summary.orderCount} 件
-            </p>
-          </div>
-
-          <div className="stat-card">
-            <p className="stat-label">累計納品台数</p>
-            <div className="stat-value">
-              {summary.deliveredQuantity.toLocaleString("ja-JP")}
-              <small>台</small>
-            </div>
-            <p className="stat-note">残 {summary.pendingQuantity.toLocaleString("ja-JP")} 台</p>
-          </div>
-
-          <div className="stat-card">
-            <p className="stat-label">請求済金額（税込）</p>
-            <div className="stat-value" style={{ fontSize: 24 }}>
-              {yen(summary.invoicedAmount)}
-            </div>
-            <p className="stat-note">請求書発行済みの合計</p>
-          </div>
-
-          <div className="stat-card">
+          <div className="stat-card accent" style={{ gridColumn: "1 / -1" }}>
             <p className="stat-label">請求書未発行</p>
             <div className="stat-value">
               {summary.awaitingInvoiceCount.toLocaleString("ja-JP")}
               <small>件</small>
             </div>
-            <p className="stat-note">単価入力・発行が必要です</p>
+            <p className="stat-note" style={{ color: "#b9c1d1" }}>
+              単価入力・発行が必要です
+            </p>
           </div>
         </div>
 
@@ -122,71 +113,38 @@ export default async function AdminDashboard() {
             </Link>
           </div>
 
-          {needsAction.length === 0 ? (
+          {needsActionByCompany.length === 0 ? (
             <div className="empty-state">対応が必要な受注はありません。</div>
           ) : (
             <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>注文番号</th>
                     <th>発注元</th>
-                    <th>注文日</th>
-                    <th className="num">台数</th>
-                    <th className="num">納品済</th>
-                    <th className="num">単価</th>
-                    <th>状況</th>
-                    <th></th>
+                    <th className="num">件数</th>
+                    <th className="num">納品済／合計台数</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {needsAction.map((order) => {
-                    const delivered = deliveredQuantity(order.id, state.deliveries);
-                    return (
-                      <tr key={order.id} className="selectable">
-                        <td className="mono" data-label="注文番号">{order.orderNumber}</td>
-                        <td data-label="発注元">{order.companyName}</td>
-                        <td className="mono" data-label="注文日">
-                          {formatDate(order.orderedAt)}
-                        </td>
-                        <td className="num" data-label="台数">{order.quantity}</td>
-                        <td className="num" data-label="納品済">{delivered}</td>
-                        <td className="num" data-label="単価">
-                          {order.unitPrice === null ? (
-                            <span className="muted">未入力</span>
-                          ) : (
-                            yen(order.unitPrice)
-                          )}
-                        </td>
-                        <td data-label="状況">
-                          <StatusBadge
-                            status={order.status}
-                            delivered={delivered}
-                            quantity={order.quantity}
-                          />
-                        </td>
-                        <td>
-                          <Link href={`/admin/orders/${order.id}`} className="row-link">
-                            処理する
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {needsActionByCompany.map((row) => (
+                    <tr key={row.userId} className="selectable">
+                      <td data-label="発注元">
+                        <Link
+                          href={`/admin/orders?status=pending,invoiced&company=${row.userId}`}
+                          className="row-link"
+                        >
+                          {row.companyName}
+                        </Link>
+                      </td>
+                      <td className="num" data-label="件数">{row.count} 件</td>
+                      <td className="num" data-label="納品済／合計台数">
+                        {row.delivered} ／ {row.quantity} 台
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
-          )}
-
-          {needsActionAll.length > needsAction.length && (
-            <p className="muted" style={{ fontSize: 12.5, margin: "12px 0 0" }}>
-              最初の {needsAction.length} 件を表示しています。残り{" "}
-              {needsActionAll.length - needsAction.length} 件は
-              <Link href="/admin/orders" className="link">
-                受注一覧
-              </Link>
-              で確認できます。
-            </p>
           )}
         </div>
 
