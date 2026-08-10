@@ -15,7 +15,7 @@ export async function notifyNewOrder(order: Order): Promise<void> {
     const { Resend } = await import("resend");
     const resend = new Resend(apiKey);
     const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-    const to = (process.env.NOTIFY_EMAIL || "info@miamihoidings.co.jp")
+    const to = (process.env.NOTIFY_EMAIL || "info@miamiholdings.co.jp")
       .split(",")
       .map((a) => a.trim())
       .filter(Boolean);

@@ -42,7 +42,7 @@ RECSGPS（リモート始動阻止装置／GPS装置）の受発注を管理す�
 
 | 区分 | ID | パスワード | 会社名 |
 |---|---|---|---|
-| 受注 | `info@miamihoidings.co.jp` | `miami0383` | MIAMIホールディングス株式会社 |
+| 受注 | `info@miamiholdings.co.jp` | `miami0383` | MIAMIホールディングス株式会社 |
 | 発注 | `engine` | `miami0383` | 株式会社エンジン |
 | 発注 | `kcar` | `3333` | 株式会社ThreeEight |
 
@@ -109,7 +109,7 @@ openssl rand -base64 32
 
 ### 3-4. デプロイ後にすること
 
-1. `info@miamihoidings.co.jp` でログイン
+1. `info@miamiholdings.co.jp` でログイン
 2. `/admin/settings` から**請求元情報**（住所・TEL・インボイス登録番号・振込先）を入力
    → 未入力の項目は請求書PDFに印字されません
 3. `/admin/accounts` から各発注企業の**標準単価**を設定（任意）

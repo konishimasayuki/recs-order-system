@@ -19,6 +19,10 @@ export default async function OrderHistoryPage() {
       <AppHeader user={user} current="/orders/history" />
 
       <div className="container">
+        <Link href="/orders" className="back-link">
+          ← ダッシュボードに戻る
+        </Link>
+
         <div className="card">
           <h2 className="card-title">注文履歴</h2>
           <p className="card-desc">

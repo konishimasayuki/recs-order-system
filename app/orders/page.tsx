@@ -86,6 +86,9 @@ export default async function CustomerDashboard({
             <Link href="/orders/history" className="btn btn-outline">
               注文履歴をすべて見る
             </Link>
+            <Link href="/deliveries" className="btn btn-outline">
+              納品履歴を見る
+            </Link>
           </div>
         </div>
 

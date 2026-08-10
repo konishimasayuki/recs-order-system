@@ -2,12 +2,11 @@ import Link from "next/link";
 import { logoutAction } from "@/app/actions";
 import { PRODUCT_NAME, User } from "@/lib/types";
 
-const CUSTOMER_NAV = [
-  { href: "/orders", label: "ダッシュボード" },
-  { href: "/orders/new", label: "新規注文" },
-  { href: "/orders/history", label: "注文履歴" },
-  { href: "/deliveries", label: "納品履歴" }
-];
+/**
+ * 発注側はタブを出さず、ダッシュボードを起点に各画面へ進む。
+ * 新規注文・注文履歴・納品履歴へは /orders のボタンから移動できる。
+ */
+const CUSTOMER_NAV: { href: string; label: string }[] = [];
 
 const ADMIN_NAV = [
   { href: "/admin", label: "ダッシュボード" },
@@ -48,17 +47,19 @@ export default function AppHeader({
           </div>
         </div>
 
-        <nav className="nav-tabs">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={item.href === current ? "active" : ""}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {nav.length > 0 && (
+          <nav className="nav-tabs">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={item.href === current ? "active" : ""}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
       </div>
     </div>
   );

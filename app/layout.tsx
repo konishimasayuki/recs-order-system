@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 
-const notoSansJP = localFont({
-  src: [
-    { path: "../public/fonts/NotoSansJP-Regular.ttf", weight: "400", style: "normal" },
-    { path: "../public/fonts/NotoSansJP-Bold.ttf", weight: "700", style: "normal" }
-  ],
-  variable: "--font-noto-sans-jp",
-  display: "swap"
-});
+/**
+ * 画面表示には端末標準の日本語フォントを使う。
+ * public/fonts の Noto Sans JP を next/font で配信すると、
+ * サブセット化されないTTFが約11MBそのまま端末へ送られ、
+ * スマートフォンでは初回表示が実用にならないほど待たされる。
+ * 同梱フォントは請求書PDFの生成（サーバー側）専用とする。
+ */
 
 export const metadata: Metadata = {
   title: "RECSGPS 注文システム",
@@ -19,7 +17,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body className={notoSansJP.variable}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
