@@ -79,8 +79,12 @@ export default async function CustomerDeliveriesPage() {
                         <td className="mono" data-label="注文番号">{order?.orderNumber ?? "—"}</td>
                         <td className="num" data-label="納品台数">{d.quantity} 台</td>
                         <td className="num" data-label="注文台数">{order?.quantity ?? "—"} 台</td>
-                        <td data-label="送り状番号">{d.trackingNumber || "—"}</td>
-                        <td data-label="備考">{d.note || "—"}</td>
+                        <td data-label="送り状番号" className={d.trackingNumber ? undefined : "sm-empty"}>
+                          {d.trackingNumber || "—"}
+                        </td>
+                        <td data-label="備考" className={d.note ? undefined : "sm-empty"}>
+                          {d.note || "—"}
+                        </td>
                         <td>
                           {order && (
                             <Link href={`/orders/${order.id}`} className="link">
