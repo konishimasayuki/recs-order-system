@@ -915,6 +915,34 @@ textarea:focus {
   accent-color: var(--color-navy-700);
 }
 
+/* ---------- 折りたたみ編集（details/summary） ---------- */
+
+.edit-details summary {
+  list-style: none;
+  display: inline-flex;
+  cursor: pointer;
+  user-select: none;
+}
+
+.edit-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.edit-details summary::after {
+  content: "▾";
+  margin-left: 6px;
+}
+
+.edit-details[open] summary::after {
+  content: "▴";
+}
+
+.edit-details-body {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
 /* ---------- ページ送り ---------- */
 
 .pagination {

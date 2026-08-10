@@ -138,51 +138,85 @@ export default async function AdminOrderDetail({
           </table>
         </div>
 
-        <form className="card" action={updateUnitPriceAction}>
-          <h2 className="card-title">単価の入力</h2>
-          <p className="card-desc">
-            税込単価を入力してください。請求書の金額はここで入力した単価から算出されます。
-          </p>
-          <input type="hidden" name="orderId" value={order.id} />
-
-          <div className="field">
-            <label htmlFor="unitPrice">単価（税込・円）</label>
-            <input
-              id="unitPrice"
-              name="unitPrice"
-              type="number"
-              min={0}
-              step={1}
-              defaultValue={order.unitPrice ?? ""}
-              placeholder="例：15730"
-              required
-            />
-            <p className="field-hint">
-              消費税10%はこの税込単価から逆算されます（インボイス制度対応）。
+        {order.unitPrice === null ? (
+          <form className="card" action={updateUnitPriceAction}>
+            <h2 className="card-title">単価の入力</h2>
+            <p className="card-desc">
+              税込単価を入力してください。請求書の金額はここで入力した単価から算出されます。
             </p>
+            <input type="hidden" name="orderId" value={order.id} />
+
+            <div className="field">
+              <label htmlFor="unitPrice">単価（税込・円）</label>
+              <input
+                id="unitPrice"
+                name="unitPrice"
+                type="number"
+                min={0}
+                step={1}
+                placeholder="例：15730"
+                required
+              />
+              <p className="field-hint">
+                消費税10%はこの税込単価から逆算されます（インボイス制度対応）。
+              </p>
+            </div>
+
+            <SubmitButton className="btn btn-primary">単価を保存する</SubmitButton>
+          </form>
+        ) : (
+          /* 標準単価などで単価が確定済みのときは金額の確認だけを見せ、
+             編集フォームは「単価を編集する」を押したときだけ開く */
+          <div className="card">
+            <h2 className="card-title">単価</h2>
+
+            {amounts && (
+              <table className="detail-table" style={{ marginBottom: 18 }}>
+                <tbody>
+                  <tr>
+                    <th>単価（税込）</th>
+                    <td className="amount">{yen(order.unitPrice)}</td>
+                  </tr>
+                  <tr>
+                    <th>小計（税抜）</th>
+                    <td className="amount">{yen(amounts.subtotalExcludingTax)}</td>
+                  </tr>
+                  <tr>
+                    <th>消費税（10%）</th>
+                    <td className="amount">{yen(amounts.taxAmount)}</td>
+                  </tr>
+                  <tr className="grand-total">
+                    <th>請求合計（税込）</th>
+                    <td className="amount">{yen(amounts.totalAmount)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
+
+            <details className="edit-details">
+              <summary className="btn btn-outline btn-sm">単価を編集する</summary>
+              <form action={updateUnitPriceAction} className="edit-details-body">
+                <input type="hidden" name="orderId" value={order.id} />
+                <div className="field">
+                  <label htmlFor="unitPrice">単価（税込・円）</label>
+                  <input
+                    id="unitPrice"
+                    name="unitPrice"
+                    type="number"
+                    min={0}
+                    step={1}
+                    defaultValue={order.unitPrice}
+                    required
+                  />
+                  <p className="field-hint">
+                    消費税10%はこの税込単価から逆算されます（インボイス制度対応）。
+                  </p>
+                </div>
+                <SubmitButton className="btn btn-primary">単価を保存する</SubmitButton>
+              </form>
+            </details>
           </div>
-
-          {amounts && (
-            <table className="detail-table" style={{ marginBottom: 18 }}>
-              <tbody>
-                <tr>
-                  <th>小計（税抜）</th>
-                  <td className="amount">{yen(amounts.subtotalExcludingTax)}</td>
-                </tr>
-                <tr>
-                  <th>消費税（10%）</th>
-                  <td className="amount">{yen(amounts.taxAmount)}</td>
-                </tr>
-                <tr className="grand-total">
-                  <th>請求合計（税込）</th>
-                  <td className="amount">{yen(amounts.totalAmount)}</td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-
-          <SubmitButton className="btn btn-primary">単価を保存する</SubmitButton>
-        </form>
+        )}
 
         <div className="card">
           <h2 className="card-title">請求書</h2>
