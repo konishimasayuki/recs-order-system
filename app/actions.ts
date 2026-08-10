@@ -263,7 +263,7 @@ export async function updateSellerAction(formData: FormData) {
   });
 
   revalidatePath("/admin/settings");
-  redirect("/admin/settings?ok=saved");
+  redirect("/admin/settings?tab=seller&ok=saved");
 }
 
 // ---------------- 受注側：アカウント管理 ----------------
@@ -277,7 +277,7 @@ export async function createAccountAction(formData: FormData) {
   const unitPriceRaw = str(formData, "defaultUnitPrice");
 
   if (!loginId || password.length < 4 || !companyName) {
-    redirect("/admin/accounts?tab=new&error=input");
+    redirect("/admin/settings?mode=new&error=input");
   }
 
   const result = await mutateState<string | "duplicate">((state) => {
@@ -303,12 +303,12 @@ export async function createAccountAction(formData: FormData) {
     return user.id;
   });
 
-  revalidatePath("/admin/accounts");
+  revalidatePath("/admin/settings");
   // 作成直後はその会社を選択した状態で一覧に戻し、続けて設定を確認できるようにする
   redirect(
     result === "duplicate"
-      ? "/admin/accounts?tab=new&error=duplicate"
-      : `/admin/accounts?ok=created&select=${result}`
+      ? "/admin/settings?mode=new&error=duplicate"
+      : `/admin/settings?ok=created&select=${result}`
   );
 }
 
@@ -334,8 +334,8 @@ export async function updateAccountAction(formData: FormData) {
     }
   });
 
-  revalidatePath("/admin/accounts");
-  redirect(`/admin/accounts?ok=updated&select=${userId}`);
+  revalidatePath("/admin/settings");
+  redirect(`/admin/settings?ok=updated&select=${userId}`);
 }
 
 export async function updateOwnProfileAction(formData: FormData) {

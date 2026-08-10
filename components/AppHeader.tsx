@@ -12,8 +12,8 @@ const ADMIN_NAV = [
   { href: "/admin", label: "ダッシュボード" },
   { href: "/admin/orders", label: "受注一覧" },
   { href: "/admin/deliveries", label: "納品一覧" },
-  { href: "/admin/accounts", label: "アカウント" },
-  { href: "/admin/settings", label: "請求元設定" }
+  // 利用頻度の低い設定系（発注アカウント・請求元情報）は「設定」に集約
+  { href: "/admin/settings", label: "設定" }
 ];
 
 export default function AppHeader({
