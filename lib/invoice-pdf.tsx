@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import "./pdf-fonts";
+import { ensureFontsRegistered } from "./pdf-fonts";
 import {
   Order,
   PRODUCT_NAME_MAIN,
@@ -91,6 +91,8 @@ export function InvoiceDocument({
   order: Order;
   seller: SellerSettings;
 }) {
+  ensureFontsRegistered();
+
   const unitPrice = order.unitPrice ?? 0;
   const amounts = calcAmounts(order.quantity, unitPrice);
   const hasBank = Boolean(seller.bankName || seller.accountNumber || seller.accountHolder);
