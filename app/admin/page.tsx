@@ -3,7 +3,7 @@ import AppHeader from "@/components/AppHeader";
 import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { allOrders, rollupByCustomer, summarize } from "@/lib/queries";
-import { readState } from "@/lib/store";
+import { getStorageStatus, readState } from "@/lib/store";
 import { deliveredQuantity, formatDate, yen } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   const user = await requireUser("admin");
   const state = await readState();
+  // 保存先はデータへのアクセス後に確定するため readState() の後に取得する
+  const storage = getStorageStatus();
   const orders = allOrders(state);
   const summary = summarize(orders, state.deliveries);
   const rollup = rollupByCustomer(state);
@@ -24,6 +26,18 @@ export default async function AdminDashboard() {
       <AppHeader user={user} current="/admin" />
 
       <div className="container">
+        {storage.ephemeral && (
+          <div className="notice-box">
+            <strong>データが一時領域に保存されています</strong>
+            <p>
+              データベースに接続されていないため、注文・納品・アカウントの記録は
+              サーバーが入れ替わるたびに初期化されます。運用を始める前に、Vercel の
+              Storage で Postgres を接続し、環境変数 <code>DATABASE_URL</code>
+              （または <code>POSTGRES_URL</code>）を設定したうえで再デプロイしてください。
+            </p>
+          </div>
+        )}
+
         {sellerIncomplete && (
           <div className="notice-box">
             <strong>請求元情報が未設定です</strong>
@@ -168,6 +182,15 @@ export default async function AdminDashboard() {
             </div>
           )}
         </div>
+
+        <p className="muted" style={{ fontSize: 12.5, textAlign: "right", margin: 0 }}>
+          データ保存先：
+          {storage.mode === "postgres"
+            ? "Postgres（接続済み）"
+            : storage.ephemeral
+              ? "一時領域（再起動で消えます）"
+              : `ローカルファイル（${storage.directory ?? "未確定"}）`}
+        </p>
       </div>
     </div>
   );

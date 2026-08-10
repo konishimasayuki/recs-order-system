@@ -1,4 +1,5 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { AppState, DEFAULT_SELLER } from "./types";
 import { hashPassword } from "./password";
@@ -9,7 +10,7 @@ import { hashPassword } from "./password";
  * 読み取り→変更→書き込みを1トランザクションに閉じ込められる利点がある。
  *
  * - POSTGRES_URL / DATABASE_URL があれば Postgres（本番・Vercel）
- * - なければ .data/state.json（ローカル検証用フォールバック）
+ * - なければ JSON ファイル（ローカル検証用フォールバック）
  */
 
 const CONNECTION_STRING =
@@ -20,7 +21,15 @@ const CONNECTION_STRING =
 
 export const STORAGE_MODE: "postgres" | "file" = CONNECTION_STRING ? "postgres" : "file";
 
-const FILE_PATH = path.join(process.cwd(), ".data", "state.json");
+/** 保存層の失敗。原因を握りつぶさず、運用者向けの日本語メッセージを添える */
+export class StorageError extends Error {
+  readonly cause?: unknown;
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = "StorageError";
+    this.cause = cause;
+  }
+}
 
 function initialState(): AppState {
   const now = new Date().toISOString();
@@ -101,9 +110,56 @@ function normalize(state: AppState): AppState {
 
 // ---------------- File backend ----------------
 
+/**
+ * 保存先ディレクトリを実行時に決める。
+ * Vercel のようにアプリのディレクトリが読み取り専用の環境では
+ * `.data` を作れず EROFS で落ちるため、書き込める場所まで順に試す。
+ */
+const EPHEMERAL_DIR = path.join(os.tmpdir(), "recsgps-data");
+
+const DIR_CANDIDATES = [
+  process.env.RECSGPS_DATA_DIR,
+  path.join(process.cwd(), ".data"),
+  EPHEMERAL_DIR
+].filter((d): d is string => Boolean(d));
+
+let dataDir: string | null = null;
+
+function resolveDataDir(): string {
+  if (dataDir) return dataDir;
+
+  const failures: string[] = [];
+  for (const dir of DIR_CANDIDATES) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      dataDir = dir;
+      if (dir === EPHEMERAL_DIR) {
+        console.warn(
+          `[recsgps] データを一時ディレクトリ (${dir}) に保存しています。` +
+            "コールドスタートで消えるため、本番では POSTGRES_URL を設定してください。"
+        );
+      }
+      return dir;
+    } catch (err) {
+      failures.push(`${dir}: ${(err as Error).message}`);
+    }
+  }
+
+  throw new StorageError(
+    "書き込み可能なデータ保存先が見つかりません。POSTGRES_URL（または DATABASE_URL）を設定してください。\n" +
+      failures.join("\n")
+  );
+}
+
+function filePath(): string {
+  return path.join(resolveDataDir(), "state.json");
+}
+
 function fileRead(): AppState {
+  const target = filePath();
   try {
-    const raw = fs.readFileSync(FILE_PATH, "utf8");
+    const raw = fs.readFileSync(target, "utf8");
     return normalize(JSON.parse(raw) as AppState);
   } catch {
     const fresh = initialState();
@@ -113,8 +169,18 @@ function fileRead(): AppState {
 }
 
 function fileWrite(state: AppState): void {
-  fs.mkdirSync(path.dirname(FILE_PATH), { recursive: true });
-  fs.writeFileSync(FILE_PATH, JSON.stringify(state, null, 2), "utf8");
+  const target = filePath();
+  // 書き込み中に落ちても既存データを壊さないよう、一時ファイル経由で差し替える
+  const tmp = `${target}.${process.pid}.tmp`;
+  try {
+    // 解決済みのディレクトリが後から消えている場合に備えて作り直す
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(tmp, JSON.stringify(state, null, 2), "utf8");
+    fs.renameSync(tmp, target);
+  } catch (err) {
+    fs.rmSync(tmp, { force: true });
+    throw new StorageError(`データの保存に失敗しました（${target}）。`, err);
+  }
 }
 
 // ---------------- Postgres backend ----------------
@@ -122,40 +188,91 @@ function fileWrite(state: AppState): void {
 type PgPool = import("pg").Pool;
 let poolPromise: Promise<PgPool> | null = null;
 
+async function createPool(): Promise<PgPool> {
+  const { Pool } = await import("pg");
+  const needsSsl = !/localhost|127\.0\.0\.1/.test(CONNECTION_STRING);
+  const pool = new Pool({
+    connectionString: CONNECTION_STRING,
+    ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+    max: 3
+  });
+  // プール側の異常でプロセスごと落ちるのを防ぐ（idle client のエラーは致命的ではない）
+  pool.on("error", (err) => console.error("[recsgps] postgres pool error:", err));
+
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `CREATE TABLE IF NOT EXISTS recsgps_state (
+         id INT PRIMARY KEY,
+         data JSONB NOT NULL,
+         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+       )`
+    );
+    await client.query(
+      `INSERT INTO recsgps_state (id, data) VALUES (1, $1::jsonb)
+       ON CONFLICT (id) DO NOTHING`,
+      [JSON.stringify(initialState())]
+    );
+  } finally {
+    client.release();
+  }
+  return pool;
+}
+
 async function getPool(): Promise<PgPool> {
   if (!poolPromise) {
-    poolPromise = (async () => {
-      const { Pool } = await import("pg");
-      const needsSsl = !/localhost|127\.0\.0\.1/.test(CONNECTION_STRING);
-      const pool = new Pool({
-        connectionString: CONNECTION_STRING,
-        ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
-        max: 3
-      });
-      const client = await pool.connect();
-      try {
-        await client.query(
-          `CREATE TABLE IF NOT EXISTS recsgps_state (
-             id INT PRIMARY KEY,
-             data JSONB NOT NULL,
-             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-           )`
-        );
-        await client.query(
-          `INSERT INTO recsgps_state (id, data) VALUES (1, $1::jsonb)
-           ON CONFLICT (id) DO NOTHING`,
-          [JSON.stringify(initialState())]
-        );
-      } finally {
-        client.release();
-      }
-      return pool;
-    })();
+    // 失敗した Promise をキャッシュすると、DBが復旧しても再デプロイまで復活しない。
+    // 失敗時はキャッシュを捨てて次のリクエストで再接続できるようにする。
+    poolPromise = createPool().catch((err) => {
+      poolPromise = null;
+      throw new StorageError(
+        "データベースに接続できません。Vercel の POSTGRES_URL（または DATABASE_URL）を確認してください。",
+        err
+      );
+    });
   }
   return poolPromise;
 }
 
+/** Pool と PoolClient のどちらも受け取れる最小の口 */
+type Queryable = { query: (text: string, values?: any[]) => Promise<any> };
+
+/** 行が消えている場合に初期状態を入れ直す（手動削除やDB再作成からの復旧） */
+async function reseed(db: Queryable): Promise<AppState> {
+  const fresh = initialState();
+  await db.query(
+    `INSERT INTO recsgps_state (id, data) VALUES (1, $1::jsonb)
+     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+    [JSON.stringify(fresh)]
+  );
+  return fresh;
+}
+
 // ---------------- Public API ----------------
+
+export interface StorageStatus {
+  mode: "postgres" | "file";
+  /** file モードでの保存先。まだ解決していなければ null */
+  directory: string | null;
+  /** 再起動・コールドスタートで消える場所に保存しているか */
+  ephemeral: boolean;
+}
+
+/**
+ * いま何処にデータを保存しているかを返す。
+ * DB未接続のまま運用してデータを失う事故を管理画面で気づけるようにするためのもの。
+ * 保存先はアクセスして初めて確定するため、readState() の後に呼ぶこと。
+ */
+export function getStorageStatus(): StorageStatus {
+  if (STORAGE_MODE === "postgres") {
+    return { mode: "postgres", directory: null, ephemeral: false };
+  }
+  return {
+    mode: "file",
+    directory: dataDir,
+    ephemeral: dataDir !== null && dataDir === EPHEMERAL_DIR
+  };
+}
 
 /** 読み取り専用でスナップショットを取得する */
 export async function readState(): Promise<AppState> {
@@ -164,7 +281,9 @@ export async function readState(): Promise<AppState> {
   const res = await pool.query<{ data: AppState }>(
     "SELECT data FROM recsgps_state WHERE id = 1"
   );
-  return normalize(res.rows[0].data);
+  const row = res.rows[0];
+  if (!row) return normalize(await reseed(pool));
+  return normalize(row.data);
 }
 
 /**
@@ -188,7 +307,8 @@ export async function mutateState<T>(
     const res = await client.query<{ data: AppState }>(
       "SELECT data FROM recsgps_state WHERE id = 1 FOR UPDATE"
     );
-    const state = normalize(res.rows[0].data);
+    const row = res.rows[0];
+    const state = normalize(row ? row.data : await reseed(client));
     const result = await mutator(state);
     await client.query(
       "UPDATE recsgps_state SET data = $1::jsonb, updated_at = now() WHERE id = 1",

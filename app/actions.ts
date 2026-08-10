@@ -277,10 +277,10 @@ export async function createAccountAction(formData: FormData) {
   const unitPriceRaw = str(formData, "defaultUnitPrice");
 
   if (!loginId || password.length < 4 || !companyName) {
-    redirect("/admin/accounts?error=input");
+    redirect("/admin/accounts?tab=new&error=input");
   }
 
-  const result = await mutateState<"ok" | "duplicate">((state) => {
+  const result = await mutateState<string | "duplicate">((state) => {
     if (state.users.some((u) => u.loginId.toLowerCase() === loginId.toLowerCase())) {
       return "duplicate";
     }
@@ -300,11 +300,16 @@ export async function createAccountAction(formData: FormData) {
       createdAt: new Date().toISOString()
     };
     state.users.push(user);
-    return "ok";
+    return user.id;
   });
 
   revalidatePath("/admin/accounts");
-  redirect(result === "ok" ? "/admin/accounts?ok=created" : "/admin/accounts?error=duplicate");
+  // 作成直後はその会社を選択した状態で一覧に戻し、続けて設定を確認できるようにする
+  redirect(
+    result === "duplicate"
+      ? "/admin/accounts?tab=new&error=duplicate"
+      : `/admin/accounts?ok=created&select=${result}`
+  );
 }
 
 export async function updateAccountAction(formData: FormData) {
@@ -330,7 +335,7 @@ export async function updateAccountAction(formData: FormData) {
   });
 
   revalidatePath("/admin/accounts");
-  redirect("/admin/accounts?ok=updated");
+  redirect(`/admin/accounts?ok=updated&select=${userId}`);
 }
 
 export async function updateOwnProfileAction(formData: FormData) {

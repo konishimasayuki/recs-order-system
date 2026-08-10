@@ -32,9 +32,19 @@ export async function GET(
     return NextResponse.json({ error: "請求書は未発行です。" }, { status: 409 });
   }
 
-  const buffer = await renderToBuffer(
-    React.createElement(InvoiceDocument, { order, seller: state.seller }) as any
-  );
+  let buffer: Buffer;
+  try {
+    // フォント欠落やPDF生成の失敗を、原因の分かる応答にして返す
+    buffer = await renderToBuffer(
+      React.createElement(InvoiceDocument, { order, seller: state.seller }) as any
+    );
+  } catch (err) {
+    console.error("[recsgps] invoice pdf render failed:", err);
+    return NextResponse.json(
+      { error: "請求書PDFの生成に失敗しました。管理者にお問い合わせください。" },
+      { status: 500 }
+    );
+  }
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,
