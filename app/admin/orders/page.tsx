@@ -8,13 +8,7 @@ import { ORDER_STATUS_LABEL, OrderStatus, deliveredQuantity, formatDate, yen } f
 
 export const dynamic = "force-dynamic";
 
-const FILTERS: { key: string; label: string }[] = [
-  { key: "all", label: "すべて" },
-  { key: "pending", label: "受付済" },
-  { key: "invoiced", label: "請求書発行済" },
-  { key: "delivered", label: "納品完了" },
-  { key: "cancelled", label: "キャンセル" }
-];
+const STATUS_KEYS: OrderStatus[] = ["pending", "invoiced", "delivered", "cancelled"];
 
 export default async function AdminOrdersPage({
   searchParams
@@ -25,10 +19,11 @@ export default async function AdminOrdersPage({
   const state = await readState();
   const customers = state.users.filter((u) => u.role === "customer");
 
-  let orders = allOrders(state);
-  const statusFilter = searchParams.status ?? "all";
-  const companyFilter = searchParams.company ?? "all";
+  const statusFilter = searchParams.status || "all";
+  const companyFilter = searchParams.company || "all";
+  const isFiltered = statusFilter !== "all" || companyFilter !== "all";
 
+  let orders = allOrders(state);
   if (statusFilter !== "all") {
     orders = orders.filter((o) => o.status === (statusFilter as OrderStatus));
   }
@@ -37,16 +32,8 @@ export default async function AdminOrdersPage({
   }
 
   const summary = summarize(orders, state.deliveries);
-
-  function buildHref(next: { status?: string; company?: string }): string {
-    const params = new URLSearchParams();
-    const status = next.status ?? statusFilter;
-    const company = next.company ?? companyFilter;
-    if (status !== "all") params.set("status", status);
-    if (company !== "all") params.set("company", company);
-    const qs = params.toString();
-    return qs ? `/admin/orders?${qs}` : "/admin/orders";
-  }
+  const countByStatus = (s: OrderStatus) =>
+    state.orders.filter((o) => o.status === s).length;
 
   return (
     <div className="page-shell">
@@ -60,35 +47,42 @@ export default async function AdminOrdersPage({
             （納品済 {summary.deliveredQuantity.toLocaleString("ja-JP")} 台）
           </p>
 
-          <div className="action-row" style={{ marginBottom: 10 }}>
-            {FILTERS.map((f) => (
-              <Link
-                key={f.key}
-                href={buildHref({ status: f.key })}
-                className={`btn btn-sm ${statusFilter === f.key ? "btn-primary" : "btn-outline"}`}
-              >
-                {f.label}
-              </Link>
-            ))}
-          </div>
+          <form method="get" action="/admin/orders" className="filter-bar">
+            <div className="filter-field">
+              <label htmlFor="filter-status">状況で絞り込み</label>
+              <select id="filter-status" name="status" defaultValue={statusFilter}>
+                <option value="all">すべて（{state.orders.length} 件）</option>
+                {STATUS_KEYS.map((s) => (
+                  <option key={s} value={s}>
+                    {ORDER_STATUS_LABEL[s]}（{countByStatus(s)} 件）
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="action-row" style={{ marginBottom: 18 }}>
-            <Link
-              href={buildHref({ company: "all" })}
-              className={`btn btn-sm ${companyFilter === "all" ? "btn-primary" : "btn-outline"}`}
-            >
-              全社
-            </Link>
-            {customers.map((c) => (
-              <Link
-                key={c.id}
-                href={buildHref({ company: c.id })}
-                className={`btn btn-sm ${companyFilter === c.id ? "btn-primary" : "btn-outline"}`}
-              >
-                {c.companyName}
-              </Link>
-            ))}
-          </div>
+            <div className="filter-field">
+              <label htmlFor="filter-company">発注元で絞り込み</label>
+              <select id="filter-company" name="company" defaultValue={companyFilter}>
+                <option value="all">すべての発注元</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-actions">
+              <button type="submit" className="btn btn-primary btn-sm">
+                絞り込む
+              </button>
+              {isFiltered && (
+                <Link href="/admin/orders" className="link">
+                  解除
+                </Link>
+              )}
+            </div>
+          </form>
 
           {orders.length === 0 ? (
             <div className="empty-state">該当する受注はありません。</div>
@@ -168,11 +162,6 @@ export default async function AdminOrdersPage({
           )}
         </div>
 
-        <p className="site-footer">
-          状況の内訳：{Object.entries(ORDER_STATUS_LABEL)
-            .map(([k, v]) => `${v}=${state.orders.filter((o) => o.status === k).length}`)
-            .join("　")}
-        </p>
       </div>
     </div>
   );
