@@ -14,7 +14,13 @@ export default async function AdminDashboard() {
   const storage = getStorageStatus();
   const orders = allOrders(state);
   const summary = summarize(orders, state.deliveries);
-  const sellerIncomplete = !state.seller.address || !state.seller.registrationNumber;
+  /**
+   * 請求元の案内は住所が未入力のときだけ出す。
+   * 以前はインボイス登録番号も必須にしていたが、登録番号を使わない運用でも
+   * 「設定したのに消えない」バナーになってしまうため、請求書の体裁に
+   * 最低限必要な住所だけを条件にする。
+   */
+  const sellerIncomplete = !state.seller.address;
 
   const ROLLUP_LIMIT = 5;
 
@@ -77,13 +83,13 @@ export default async function AdminDashboard() {
 
         {sellerIncomplete && (
           <div className="notice-box">
-            <strong>請求元情報が未設定です</strong>
+            <strong>請求元の住所が未入力です</strong>
             <p>
-              請求書PDFに住所・登録番号・振込先が印字されません。
+              請求書PDFに住所が印字されません。
               <Link href="/admin/settings?tab=seller" className="link">
                 設定
               </Link>
-              から入力してください。
+              の「請求元情報」から入力してください。
             </p>
           </div>
         )}
