@@ -75,7 +75,7 @@ export default async function AdminAccountsPage({
             ) : (
               <>
                 <p className="card-desc">
-                  会社名をクリックすると、その会社の設定が下に表示されます。
+                  会社を選ぶと、その会社の設定が下に表示されます。
                 </p>
 
                 <div className="table-wrap">

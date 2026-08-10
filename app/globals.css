@@ -48,26 +48,29 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 16px 64px;
+  /* 横のpaddingはヘッダーを画面幅いっぱいに広げるため、各コンテナ側で持つ */
+  padding: 0 0 64px;
 }
 
 .container {
   width: 100%;
   max-width: 980px;
   margin: 0 auto;
+  padding: 0 16px;
 }
 
 .container-narrow {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
+  padding: 0 16px;
 }
 
 .brand-bar {
   width: 100%;
   background: var(--color-navy-800);
   color: #fff;
-  padding: 22px 16px 0;
+  padding: 22px 0 0;
   margin-bottom: 32px;
 }
 
@@ -898,7 +901,27 @@ textarea:focus {
 
 @media (max-width: 640px) {
   .card {
-    padding: 20px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 15px;
+  }
+
+  .stat-grid {
+    /* auto-fit だと端末幅によって1列に落ちて縦に間延びするため2列に固定する */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .stat-value {
+    font-size: 26px;
   }
 
   /*
@@ -908,8 +931,8 @@ textarea:focus {
    * 装飾（英字の帯・製品説明）とログインIDは画面を消費するだけなので出さない。
    */
   .brand-bar {
-    padding: 12px 16px 0;
-    margin-bottom: 20px;
+    padding: 12px 0 0;
+    margin-bottom: 16px;
   }
 
   .brand-eyebrow,
@@ -994,7 +1017,7 @@ textarea:focus {
   .data-table {
     display: block;
     min-width: 0;
-    font-size: 14px;
+    font-size: 13.5px;
   }
 
   .data-table thead {
@@ -1011,8 +1034,8 @@ textarea:focus {
   .data-table tbody tr {
     border: 1px solid var(--color-border);
     border-radius: 8px;
-    padding: 6px 0;
-    margin-bottom: 12px;
+    padding: 4px 0;
+    margin-bottom: 10px;
   }
 
   .data-table tbody tr:last-child {
@@ -1023,8 +1046,8 @@ textarea:focus {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 16px;
-    padding: 7px 14px;
+    gap: 14px;
+    padding: 5px 12px;
     border-bottom: none;
     text-align: right;
   }
@@ -1034,9 +1057,30 @@ textarea:focus {
     content: attr(data-label);
     flex: 0 0 auto;
     color: var(--color-text-muted);
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     text-align: left;
+  }
+
+  /* 値が空（—）のセルはカード表示では行ごと省き、カードを短くする */
+  .data-table tbody td.sm-empty {
+    display: none;
+  }
+
+  /*
+   * 一覧から選ぶカードは、どこをタップしても選択できるようにする。
+   * tr は上で display:block にしているため position:relative が確実に効く
+   * （table-row のままだと iOS Safari で包含ブロックにならない）。
+   */
+  .data-table tbody tr.selectable {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .data-table tbody tr.selectable .row-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
   }
 
   .data-table tbody td:not([data-label]) {
@@ -1060,5 +1104,31 @@ textarea:focus {
     display: inline;
     padding: 0;
     margin: 0;
+  }
+
+  .filter-bar {
+    padding: 10px 12px;
+    gap: 8px 10px;
+    margin-bottom: 14px;
+  }
+
+  /* プルダウン2つを必ず1行に収める */
+  .filter-field {
+    flex: 1 1 40%;
+    min-width: 0;
+  }
+
+  .filter-field label {
+    margin-bottom: 4px;
+  }
+
+  .filter-bar select {
+    padding: 8px 10px;
+    font-size: 13.5px;
+  }
+
+  .filter-actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
   }
 }
