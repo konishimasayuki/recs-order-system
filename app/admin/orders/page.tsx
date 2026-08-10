@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import ListFilter from "@/components/ListFilter";
+import Pagination, { clampPage } from "@/components/Pagination";
 import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { allOrders, summarize } from "@/lib/queries";
@@ -11,10 +12,12 @@ export const dynamic = "force-dynamic";
 
 const STATUS_KEYS: OrderStatus[] = ["pending", "invoiced", "delivered", "cancelled"];
 
+const PER_PAGE = 20;
+
 export default async function AdminOrdersPage({
   searchParams
 }: {
-  searchParams: { status?: string; company?: string };
+  searchParams: { status?: string; company?: string; page?: string };
 }) {
   const user = await requireUser("admin");
   const state = await readState();
@@ -32,6 +35,8 @@ export default async function AdminOrdersPage({
   }
 
   const summary = summarize(orders, state.deliveries);
+  const page = clampPage(searchParams.page, orders.length, PER_PAGE);
+  const pageOrders = orders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const countByStatus = (s: OrderStatus) =>
     state.orders.filter((o) => o.status === s).length;
 
@@ -97,7 +102,7 @@ export default async function AdminOrdersPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => {
+                  {pageOrders.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
                       <tr key={order.id}>
@@ -156,6 +161,14 @@ export default async function AdminOrdersPage({
               </table>
             </div>
           )}
+
+          <Pagination
+            total={orders.length}
+            page={page}
+            perPage={PER_PAGE}
+            basePath="/admin/orders"
+            params={{ status: statusFilter, company: companyFilter }}
+          />
         </div>
 
       </div>

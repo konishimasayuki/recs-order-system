@@ -873,6 +873,22 @@ textarea:focus {
   gap: 14px;
 }
 
+/* ---------- ページ送り ---------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.pagination .btn.is-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .selection-head {
   display: flex;
   align-items: baseline;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import ListFilter from "@/components/ListFilter";
+import Pagination, { clampPage } from "@/components/Pagination";
 import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { ordersOf, summarize } from "@/lib/queries";
@@ -17,10 +18,12 @@ export const dynamic = "force-dynamic";
 
 const STATUS_KEYS: OrderStatus[] = ["pending", "invoiced", "delivered", "cancelled"];
 
+const PER_PAGE = 20;
+
 export default async function OrderHistoryPage({
   searchParams
 }: {
-  searchParams: { status?: string };
+  searchParams: { status?: string; page?: string };
 }) {
   const user = await requireUser("customer");
   const state = await readState();
@@ -33,6 +36,8 @@ export default async function OrderHistoryPage({
       : allMine.filter((o) => o.status === (statusFilter as OrderStatus));
 
   const summary = summarize(orders, state.deliveries);
+  const page = clampPage(searchParams.page, orders.length, PER_PAGE);
+  const pageOrders = orders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const countByStatus = (s: OrderStatus) =>
     allMine.filter((o) => o.status === s).length;
 
@@ -104,7 +109,7 @@ export default async function OrderHistoryPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => {
+                  {pageOrders.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
                       <tr key={order.id}>
@@ -159,6 +164,14 @@ export default async function OrderHistoryPage({
               </table>
             </div>
           )}
+
+          <Pagination
+            total={orders.length}
+            page={page}
+            perPage={PER_PAGE}
+            basePath="/orders/history"
+            params={{ status: statusFilter }}
+          />
         </div>
       </div>
     </div>

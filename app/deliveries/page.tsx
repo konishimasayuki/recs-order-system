@@ -1,12 +1,19 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
+import Pagination, { clampPage } from "@/components/Pagination";
 import { requireUser } from "@/lib/auth";
 import { deliveriesOf, ordersOf, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomerDeliveriesPage() {
+const PER_PAGE = 20;
+
+export default async function CustomerDeliveriesPage({
+  searchParams
+}: {
+  searchParams: { page?: string };
+}) {
   const user = await requireUser("customer");
   const state = await readState();
   const orders = ordersOf(state, user.id);
@@ -14,6 +21,8 @@ export default async function CustomerDeliveriesPage() {
   const deliveries = deliveriesOf(state, orderIds);
   const summary = summarize(orders, state.deliveries);
   const orderMap = new Map(orders.map((o) => [o.id, o]));
+  const page = clampPage(searchParams.page, deliveries.length, PER_PAGE);
+  const pageDeliveries = deliveries.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
     <div className="page-shell">
@@ -71,7 +80,7 @@ export default async function CustomerDeliveriesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {deliveries.map((d) => {
+                  {pageDeliveries.map((d) => {
                     const order = orderMap.get(d.orderId);
                     return (
                       <tr key={d.id}>
@@ -99,6 +108,13 @@ export default async function CustomerDeliveriesPage() {
               </table>
             </div>
           )}
+
+          <Pagination
+            total={deliveries.length}
+            page={page}
+            perPage={PER_PAGE}
+            basePath="/deliveries"
+          />
         </div>
       </div>
     </div>
