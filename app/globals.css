@@ -873,6 +873,48 @@ textarea:focus {
   gap: 14px;
 }
 
+/* チェックボックス式の絞り込み */
+.filter-field {
+  flex-basis: 100%;
+}
+
+.filter-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.filter-checks {
+  display: grid;
+  gap: 8px 12px;
+}
+
+.filter-checks.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.filter-checks.cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.filter-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--color-navy-700);
+}
+
 /* ---------- ページ送り ---------- */
 
 .pagination {
@@ -1177,6 +1219,38 @@ textarea:focus {
     z-index: 1;
   }
 
+  /*
+   * pair-cards：1行に2項目を並べる密度の高いカード。
+   * 各セルは「小さな見出し＋値」の縦組みになり、.span-2 は1行を占有する。
+   */
+  .data-table.pair-cards tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 12px;
+    padding: 8px 14px 10px;
+  }
+
+  .data-table.pair-cards tbody td {
+    display: block;
+    width: auto;
+    padding: 5px 0;
+    text-align: left;
+  }
+
+  .data-table.pair-cards tbody td + td {
+    border-top: none;
+  }
+
+  .data-table.pair-cards tbody td[data-label]::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 11px;
+  }
+
+  .data-table.pair-cards tbody td.span-2 {
+    grid-column: 1 / -1;
+  }
+
   .data-table tbody td:not([data-label]) {
     justify-content: flex-end;
   }
@@ -1204,21 +1278,6 @@ textarea:focus {
     padding: 10px 12px;
     gap: 8px 10px;
     margin-bottom: 14px;
-  }
-
-  /* プルダウン2つを必ず1行に収める */
-  .filter-field {
-    flex: 1 1 40%;
-    min-width: 0;
-  }
-
-  .filter-field label {
-    margin-bottom: 4px;
-  }
-
-  .filter-bar select {
-    padding: 8px 10px;
-    font-size: 13.5px;
   }
 
   .filter-actions {

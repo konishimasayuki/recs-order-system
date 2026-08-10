@@ -5,33 +5,39 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 export interface FilterFieldDef {
-  /** URLクエリのキー */
+  /** URLクエリのキー。複数選択はカンマ区切りで載る */
   name: string;
   label: string;
-  /** 現在値。"all" は未適用を表す */
-  value: string;
+  /** 現在チェックされている値。空配列は「絞り込みなし（全件）」 */
+  values: string[];
   options: { value: string; label: string }[];
+  /** チェックボックスを1行に並べる個数 */
+  columns?: 2 | 3;
 }
 
 /**
  * 一覧カード共通の絞り込み。
- * カード見出しの右に「絞り込み」ボタンを置き、押すと条件が開く。
- * 条件はプルダウンを選んだ瞬間に適用され、URLのクエリに保存される。
- * 絞り込み中はボタンに件数バッジを出し、条件も開いた状態で表示する。
+ * 「絞り込み」ボタンで条件を開閉し、チェックボックスを押した瞬間に適用する。
+ * 複数チェックはOR条件。状態はURLに持つため、リロードや共有でも保たれる。
  */
 export default function ListFilter({ fields }: { fields: FilterFieldDef[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
-  const activeCount = fields.filter((f) => f.value !== "all").length;
+  const activeCount = fields.filter((f) => f.values.length > 0).length;
   const [open, setOpen] = useState(activeCount > 0);
 
-  function apply(name: string, value: string) {
+  function toggle(name: string, value: string) {
     const params = new URLSearchParams();
     for (const f of fields) {
-      const v = f.name === name ? value : f.value;
-      if (v !== "all") params.set(f.name, v);
+      const vals =
+        f.name === name
+          ? f.values.includes(value)
+            ? f.values.filter((v) => v !== value)
+            : [...f.values, value]
+          : f.values;
+      if (vals.length > 0) params.set(f.name, vals.join(","));
     }
     const qs = params.toString();
     startTransition(() => {
@@ -56,18 +62,19 @@ export default function ListFilter({ fields }: { fields: FilterFieldDef[] }) {
         <div className="filter-bar" style={isPending ? { opacity: 0.6 } : undefined}>
           {fields.map((f) => (
             <div className="filter-field" key={f.name}>
-              <label htmlFor={`filter-${f.name}`}>{f.label}</label>
-              <select
-                id={`filter-${f.name}`}
-                value={f.value}
-                onChange={(e) => apply(f.name, e.target.value)}
-              >
+              <p className="filter-label">{f.label}</p>
+              <div className={`filter-checks cols-${f.columns ?? 2}`}>
                 {f.options.map((o) => (
-                  <option key={o.value} value={o.value}>
+                  <label className="filter-check" key={o.value}>
+                    <input
+                      type="checkbox"
+                      checked={f.values.includes(o.value)}
+                      onChange={() => toggle(f.name, o.value)}
+                    />
                     {o.label}
-                  </option>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
           ))}
           {activeCount > 0 && (

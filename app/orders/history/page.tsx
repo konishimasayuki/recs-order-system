@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import ListFilter from "@/components/ListFilter";
+import { parseMulti } from "@/lib/filters";
 import Pagination, { clampPage } from "@/components/Pagination";
 import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
@@ -29,17 +30,15 @@ export default async function OrderHistoryPage({
   const state = await readState();
   const allMine = ordersOf(state, user.id);
 
-  const statusFilter = searchParams.status || "all";
+  const statusSelected = parseMulti(searchParams.status, STATUS_KEYS);
   const orders =
-    statusFilter === "all"
+    statusSelected.length === 0
       ? allMine
-      : allMine.filter((o) => o.status === (statusFilter as OrderStatus));
+      : allMine.filter((o) => statusSelected.includes(o.status));
 
   const summary = summarize(orders, state.deliveries);
   const page = clampPage(searchParams.page, orders.length, PER_PAGE);
   const pageOrders = orders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const countByStatus = (s: OrderStatus) =>
-    allMine.filter((o) => o.status === s).length;
 
   return (
     <div className="page-shell">
@@ -65,14 +64,12 @@ export default async function OrderHistoryPage({
                 {
                   name: "status",
                   label: "状況",
-                  value: statusFilter,
-                  options: [
-                    { value: "all", label: `すべて（${allMine.length} 件）` },
-                    ...STATUS_KEYS.map((s) => ({
-                      value: s,
-                      label: `${ORDER_STATUS_LABEL[s]}（${countByStatus(s)} 件）`
-                    }))
-                  ]
+                  values: statusSelected,
+                  columns: 2,
+                  options: STATUS_KEYS.map((s) => ({
+                    value: s,
+                    label: ORDER_STATUS_LABEL[s]
+                  }))
                 }
               ]}
             />
@@ -170,7 +167,7 @@ export default async function OrderHistoryPage({
             page={page}
             perPage={PER_PAGE}
             basePath="/orders/history"
-            params={{ status: statusFilter }}
+            params={{ status: statusSelected.join(",") }}
           />
         </div>
       </div>

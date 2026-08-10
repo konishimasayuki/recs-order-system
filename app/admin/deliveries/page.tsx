@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import ListFilter from "@/components/ListFilter";
+import { parseMulti } from "@/lib/filters";
 import Pagination, { clampPage } from "@/components/Pagination";
 import { requireUser } from "@/lib/auth";
 import { allOrders, summarize } from "@/lib/queries";
@@ -21,15 +22,19 @@ export default async function AdminDeliveriesPage({
   const orders = allOrders(state);
   const orderMap = new Map(orders.map((o) => [o.id, o]));
 
-  const companyFilter = searchParams.company || "all";
+  const companySelected = parseMulti(
+    searchParams.company,
+    customers.map((c) => c.id)
+  );
 
   let deliveries = [...state.deliveries].sort((a, b) =>
     b.deliveredAt.localeCompare(a.deliveredAt)
   );
-  if (companyFilter !== "all") {
-    deliveries = deliveries.filter(
-      (d) => orderMap.get(d.orderId)?.userId === companyFilter
-    );
+  if (companySelected.length > 0) {
+    deliveries = deliveries.filter((d) => {
+      const uid = orderMap.get(d.orderId)?.userId;
+      return uid !== undefined && companySelected.includes(uid);
+    });
   }
 
   const summary = summarize(orders, state.deliveries);
@@ -75,11 +80,12 @@ export default async function AdminDeliveriesPage({
                 {
                   name: "company",
                   label: "発注元",
-                  value: companyFilter,
-                  options: [
-                    { value: "all", label: "すべての発注元" },
-                    ...customers.map((c) => ({ value: c.id, label: c.companyName }))
-                  ]
+                  values: companySelected,
+                  columns: 2,
+                  options: customers.map((c) => ({
+                    value: c.id,
+                    label: c.companyName
+                  }))
                 }
               ]}
             />
@@ -138,7 +144,7 @@ export default async function AdminDeliveriesPage({
             page={page}
             perPage={PER_PAGE}
             basePath="/admin/deliveries"
-            params={{ company: companyFilter }}
+            params={{ company: companySelected.join(",") }}
           />
         </div>
       </div>
