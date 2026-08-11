@@ -943,6 +943,28 @@ textarea:focus {
   border-top: 1px solid var(--color-border);
 }
 
+/* 単価カード：編集ボタンをカード右上（見出しの行）に固定する */
+.price-card {
+  position: relative;
+}
+
+.price-card .edit-details summary {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+}
+
+.price-card .edit-details-body {
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .price-card .edit-details summary {
+    top: 12px;
+    right: 14px;
+  }
+}
+
 /* ---------- ページ送り ---------- */
 
 .pagination {

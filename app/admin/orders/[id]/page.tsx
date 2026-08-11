@@ -102,13 +102,9 @@ export default async function AdminOrderDetail({
                 <td>{PRODUCT_NAME}</td>
               </tr>
               <tr>
-                <th>注文台数</th>
-                <td className="amount">{order.quantity} 台</td>
-              </tr>
-              <tr>
-                <th>納品済／残</th>
+                <th>台数</th>
                 <td className="amount">
-                  {delivered} 台 ／ 残 {remaining} 台
+                  {order.quantity} 台（納品済 {delivered} ／ 残 {remaining}）
                 </td>
               </tr>
               <tr>
@@ -142,7 +138,7 @@ export default async function AdminOrderDetail({
           /* 注文にはまだ単価が保存されていないが、発注元に標準単価がある。
              標準単価がそのまま適用される（請求書発行時に自動確定）ため、
              確認表示と編集ボタンだけを出す */
-          <div className="card">
+          <div className="card price-card">
             <h2 className="card-title">単価</h2>
 
             <table className="detail-table" style={{ marginBottom: 18 }}>
@@ -212,7 +208,7 @@ export default async function AdminOrderDetail({
         ) : (
           /* 標準単価などで単価が確定済みのときは金額の確認だけを見せ、
              編集フォームは「単価を編集する」を押したときだけ開く */
-          <div className="card">
+          <div className="card price-card">
             <h2 className="card-title">単価</h2>
 
             {amounts && (
