@@ -646,6 +646,8 @@ textarea:focus {
   border-color: transparent;
   padding: 0;
   font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 /* ---------- テーブル ---------- */
@@ -1361,6 +1363,11 @@ textarea:focus {
 
   .data-table.pair-cards tbody td.span-2 {
     grid-column: 1 / -1;
+  }
+
+  /* 上の display:block が汎用の sm-empty（空セル非表示）を上書きしないようにする */
+  .data-table.pair-cards tbody td.sm-empty {
+    display: none;
   }
 
   .data-table tbody td:not([data-label]) {

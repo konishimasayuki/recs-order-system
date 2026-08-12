@@ -1,9 +1,11 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import Pagination, { clampPage } from "@/components/Pagination";
+import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { deliveriesOf, ordersOf, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
+import { deliveredQuantity, statusTone } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -67,39 +69,62 @@ export default async function CustomerDeliveriesPage({
             <div className="empty-state">まだ納品の記録はありません。</div>
           ) : (
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table pair-cards">
                 <thead>
                   <tr>
                     <th>納品日</th>
                     <th>注文番号</th>
                     <th className="num">納品台数</th>
-                    <th className="num">注文台数</th>
+                    <th>注文の状況</th>
                     <th>送り状番号</th>
                     <th>備考</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageDeliveries.map((d) => {
                     const order = orderMap.get(d.orderId);
+                    const delivered = order
+                      ? deliveredQuantity(order.id, state.deliveries)
+                      : 0;
                     return (
-                      <tr key={d.id} className={order ? "selectable" : undefined}>
+                      <tr
+                        key={d.id}
+                        className={
+                          order
+                            ? `selectable ${statusTone(order.status, delivered)}`
+                            : undefined
+                        }
+                      >
                         <td className="mono" data-label="納品日">{d.deliveredAt}</td>
-                        <td className="mono" data-label="注文番号">{order?.orderNumber ?? "—"}</td>
+                        <td className="mono" data-label="注文番号">
+                          {order ? (
+                            <Link href={`/orders/${order.id}`} className="row-link">
+                              {order.orderNumber}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td className="num" data-label="納品台数">{d.quantity} 台</td>
-                        <td className="num" data-label="注文台数">{order?.quantity ?? "—"} 台</td>
-                        <td data-label="送り状番号" className={d.trackingNumber ? undefined : "sm-empty"}>
+                        <td data-label="注文の状況">
+                          {order ? (
+                            <StatusBadge
+                              status={order.status}
+                              delivered={delivered}
+                              quantity={order.quantity}
+                            />
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
+                        <td
+                          data-label="送り状番号"
+                          className={d.trackingNumber ? "span-2" : "sm-empty"}
+                        >
                           {d.trackingNumber || "—"}
                         </td>
-                        <td data-label="備考" className={d.note ? undefined : "sm-empty"}>
+                        <td data-label="備考" className={d.note ? "span-2" : "sm-empty"}>
                           {d.note || "—"}
-                        </td>
-                        <td>
-                          {order && (
-                            <Link href={`/orders/${order.id}`} className="row-link">
-                              注文詳細
-                            </Link>
-                          )}
                         </td>
                       </tr>
                     );
