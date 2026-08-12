@@ -489,6 +489,27 @@ textarea:focus {
   margin-top: 8px;
 }
 
+/* 1段目に主要ボタンを大きく、2段目に補助ボタンを横並びで置く */
+.action-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.action-stack .btn {
+  width: 100%;
+}
+
+.action-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-lg {
+  padding: 16px 18px;
+  font-size: 16px;
+}
+
 /* ---------- 通知 ---------- */
 
 .error-box {
@@ -1091,6 +1112,11 @@ textarea:focus {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
     margin-bottom: 16px;
+  }
+
+  /* カードが奇数枚のとき最後の1枚が半端な半幅にならないよう全幅にする */
+  .stat-grid .stat-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .stat-card {
