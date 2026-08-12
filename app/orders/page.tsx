@@ -95,9 +95,8 @@ export default async function CustomerDashboard({
                   <tr>
                     <th>注文番号</th>
                     <th>注文日</th>
-                    <th className="num">台数</th>
+                    <th>台数</th>
                     <th className="num">金額（税込）</th>
-                    <th>状況</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -111,8 +110,14 @@ export default async function CustomerDashboard({
                           </Link>
                         </td>
                         <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
-                        <td className="num" data-label="台数">
-                          {order.quantity} 台（納品済 {delivered}）
+                        {/* 納品の進捗は状況バッジ（一部納品（X/Y）等）が兼ねるため、行を分けない */}
+                        <td data-label="台数">
+                          {order.quantity} 台{" "}
+                          <StatusBadge
+                            status={order.status}
+                            delivered={delivered}
+                            quantity={order.quantity}
+                          />
                         </td>
                         <td className="num" data-label="金額（税込）">
                           {order.unitPrice === null ? (
@@ -120,13 +125,6 @@ export default async function CustomerDashboard({
                           ) : (
                             yen(order.quantity * order.unitPrice)
                           )}
-                        </td>
-                        <td className="span-2" data-label="状況">
-                          <StatusBadge
-                            status={order.status}
-                            delivered={delivered}
-                            quantity={order.quantity}
-                          />
                         </td>
                       </tr>
                     );
