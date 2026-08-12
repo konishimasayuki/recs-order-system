@@ -45,7 +45,7 @@ export default async function CustomerDashboard({
           </div>
 
           <div className="stat-card">
-            <p className="stat-label">累計納品台数</p>
+            <p className="stat-label">納品台数</p>
             <div className="stat-value">
               {summary.deliveredQuantity.toLocaleString("ja-JP")}
               <small>台</small>
@@ -53,16 +53,7 @@ export default async function CustomerDashboard({
             <div className="progress-bar">
               <span style={{ width: `${progress}%` }} />
             </div>
-            <p className="stat-note">納品率 {progress}%</p>
-          </div>
-
-          <div className="stat-card">
-            <p className="stat-label">納品待ち台数</p>
-            <div className="stat-value">
-              {summary.pendingQuantity.toLocaleString("ja-JP")}
-              <small>台</small>
-            </div>
-            <p className="stat-note">出荷準備中・製作中を含みます</p>
+            <p className="stat-note">納品待ち {summary.pendingQuantity.toLocaleString("ja-JP")} 台</p>
           </div>
 
           <div className="stat-card">
@@ -70,25 +61,22 @@ export default async function CustomerDashboard({
             <div className="stat-value" style={{ fontSize: 24 }}>
               {yen(summary.invoicedAmount)}
             </div>
-            <p className="stat-note">請求書発行済みの注文の合計</p>
           </div>
         </div>
 
         <div className="card">
-          <h2 className="card-title">RECSGPS を注文する</h2>
-          <p className="card-desc">
-            台数を指定してご注文いただけます。ご注文内容はMIAMIホールディングスへ即時に通知されます。
-          </p>
-          <div className="action-row">
-            <Link href="/orders/new" className="btn btn-gold">
+          <div className="action-stack">
+            <Link href="/orders/new" className="btn btn-gold btn-lg">
               新規注文を作成する
             </Link>
-            <Link href="/orders/history" className="btn btn-outline">
-              注文履歴をすべて見る
-            </Link>
-            <Link href="/deliveries" className="btn btn-outline">
-              納品履歴を見る
-            </Link>
+            <div className="action-pair">
+              <Link href="/orders/history" className="btn btn-outline">
+                注文履歴
+              </Link>
+              <Link href="/deliveries" className="btn btn-outline">
+                納品履歴
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -102,16 +90,14 @@ export default async function CustomerDashboard({
             </div>
           ) : (
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table pair-cards">
                 <thead>
                   <tr>
                     <th>注文番号</th>
                     <th>注文日</th>
                     <th className="num">台数</th>
-                    <th className="num">納品済</th>
                     <th className="num">金額（税込）</th>
                     <th>状況</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -119,10 +105,15 @@ export default async function CustomerDashboard({
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
                       <tr key={order.id} className="selectable">
-                        <td className="mono" data-label="注文番号">{order.orderNumber}</td>
+                        <td className="mono" data-label="注文番号">
+                          <Link href={`/orders/${order.id}`} className="row-link">
+                            {order.orderNumber}
+                          </Link>
+                        </td>
                         <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
-                        <td className="num" data-label="台数">{order.quantity}</td>
-                        <td className="num" data-label="納品済">{delivered}</td>
+                        <td className="num" data-label="台数">
+                          {order.quantity} 台（納品済 {delivered}）
+                        </td>
                         <td className="num" data-label="金額（税込）">
                           {order.unitPrice === null ? (
                             <span className="muted">未確定</span>
@@ -130,17 +121,12 @@ export default async function CustomerDashboard({
                             yen(order.quantity * order.unitPrice)
                           )}
                         </td>
-                        <td data-label="状況">
+                        <td className="span-2" data-label="状況">
                           <StatusBadge
                             status={order.status}
                             delivered={delivered}
                             quantity={order.quantity}
                           />
-                        </td>
-                        <td>
-                          <Link href={`/orders/${order.id}`} className="row-link">
-                            詳細
-                          </Link>
                         </td>
                       </tr>
                     );
