@@ -96,35 +96,33 @@ export default async function CustomerDashboard({
                     <th>注文番号</th>
                     <th>注文日</th>
                     <th>台数</th>
-                    <th className="num">金額（税込）</th>
+                    <th>状況</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recent.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
+                    const tone =
+                      order.status !== "cancelled" &&
+                      order.status !== "delivered" &&
+                      delivered > 0
+                        ? "partial"
+                        : order.status;
                     return (
-                      <tr key={order.id} className="selectable">
+                      <tr key={order.id} className={`selectable tone-${tone}`}>
                         <td className="mono" data-label="注文番号">
                           <Link href={`/orders/${order.id}`} className="row-link">
                             {order.orderNumber}
                           </Link>
                         </td>
                         <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
-                        {/* 納品の進捗は状況バッジ（一部納品（X/Y）等）が兼ねるため、行を分けない */}
-                        <td data-label="台数">
-                          {order.quantity} 台{" "}
+                        <td data-label="台数">{order.quantity} 台</td>
+                        <td data-label="状況">
                           <StatusBadge
                             status={order.status}
                             delivered={delivered}
                             quantity={order.quantity}
                           />
-                        </td>
-                        <td className="num" data-label="金額（税込）">
-                          {order.unitPrice === null ? (
-                            <span className="muted">未確定</span>
-                          ) : (
-                            yen(order.quantity * order.unitPrice)
-                          )}
                         </td>
                       </tr>
                     );

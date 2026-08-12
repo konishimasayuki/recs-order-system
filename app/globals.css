@@ -612,6 +612,42 @@ textarea:focus {
   border: 1px solid #d5c3ee;
 }
 
+/*
+ * tone-*：行（スマホではカード全体）を状況バッジと同じ色で塗る。
+ * カード背景がバッジ色になるため、中のバッジは枠と背景を外して文字だけにする。
+ */
+.data-table tbody tr.tone-pending {
+  background: var(--color-warn-bg);
+  border-color: #e6d0a0;
+}
+
+.data-table tbody tr.tone-invoiced {
+  background: #eaf0fb;
+  border-color: #c3d2ec;
+}
+
+.data-table tbody tr.tone-delivered {
+  background: var(--color-success-bg);
+  border-color: #a9d5b8;
+}
+
+.data-table tbody tr.tone-cancelled {
+  background: #f0f1f3;
+  border-color: var(--color-border);
+}
+
+.data-table tbody tr.tone-partial {
+  background: #f3edfb;
+  border-color: #d5c3ee;
+}
+
+.data-table tbody tr[class*="tone-"] .badge {
+  background: transparent;
+  border-color: transparent;
+  padding: 0;
+  font-size: 13px;
+}
+
 /* ---------- テーブル ---------- */
 
 .table-wrap {
