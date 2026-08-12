@@ -12,6 +12,7 @@ import {
   OrderStatus,
   deliveredQuantity,
   formatDate,
+  statusTone,
   yen
 } from "@/lib/types";
 
@@ -91,49 +92,45 @@ export default async function OrderHistoryPage({
             </div>
           ) : (
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table pair-cards">
                 <thead>
                   <tr>
                     <th>注文番号</th>
                     <th>注文日</th>
                     <th className="num">台数</th>
-                    <th className="num">納品済</th>
-                    <th className="num">単価（税込）</th>
-                    <th className="num">金額（税込）</th>
                     <th>状況</th>
+                    <th className="num">金額（税込）</th>
                     <th>請求書</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageOrders.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
                     return (
-                      <tr key={order.id} className="selectable">
-                        <td className="mono" data-label="注文番号">{order.orderNumber}</td>
+                      <tr
+                        key={order.id}
+                        className={`selectable ${statusTone(order.status, delivered)}`}
+                      >
+                        <td className="mono" data-label="注文番号">
+                          <Link href={`/orders/${order.id}`} className="row-link">
+                            {order.orderNumber}
+                          </Link>
+                        </td>
                         <td className="mono" data-label="注文日">{formatDate(order.orderedAt)}</td>
-                        <td className="num" data-label="台数">{order.quantity}</td>
-                        <td className="num" data-label="納品済">{delivered}</td>
-                        <td className="num" data-label="単価（税込）">
-                          {order.unitPrice === null ? (
-                            <span className="muted">未確定</span>
-                          ) : (
-                            yen(order.unitPrice)
-                          )}
-                        </td>
-                        <td className="num" data-label="金額（税込）">
-                          {order.unitPrice === null ? (
-                            <span className="muted">—</span>
-                          ) : (
-                            yen(order.quantity * order.unitPrice)
-                          )}
-                        </td>
+                        <td className="num" data-label="台数">{order.quantity} 台</td>
                         <td data-label="状況">
                           <StatusBadge
                             status={order.status}
                             delivered={delivered}
                             quantity={order.quantity}
                           />
+                        </td>
+                        <td className="num" data-label="金額（税込）">
+                          {order.unitPrice === null ? (
+                            <span className="muted">未確定</span>
+                          ) : (
+                            yen(order.quantity * order.unitPrice)
+                          )}
                         </td>
                         <td data-label="請求書">
                           {order.invoiceNumber ? (
@@ -148,11 +145,6 @@ export default async function OrderHistoryPage({
                           ) : (
                             <span className="muted">—</span>
                           )}
-                        </td>
-                        <td>
-                          <Link href={`/orders/${order.id}`} className="row-link">
-                            詳細
-                          </Link>
                         </td>
                       </tr>
                     );

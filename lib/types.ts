@@ -161,3 +161,9 @@ export function deliveredQuantity(orderId: string, deliveries: Delivery[]): numb
     .filter((d) => d.orderId === orderId)
     .reduce((sum, d) => sum + d.quantity, 0);
 }
+
+/** 一覧カードの色分けクラス名（StatusBadge の一部納品判定と揃える） */
+export function statusTone(status: OrderStatus, delivered: number): string {
+  const partial = status !== "cancelled" && status !== "delivered" && delivered > 0;
+  return `tone-${partial ? "partial" : status}`;
+}

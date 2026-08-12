@@ -4,7 +4,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { ordersOf, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
-import { deliveredQuantity, formatDate, yen } from "@/lib/types";
+import { deliveredQuantity, formatDate, statusTone, yen } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -102,14 +102,11 @@ export default async function CustomerDashboard({
                 <tbody>
                   {recent.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
-                    const tone =
-                      order.status !== "cancelled" &&
-                      order.status !== "delivered" &&
-                      delivered > 0
-                        ? "partial"
-                        : order.status;
                     return (
-                      <tr key={order.id} className={`selectable tone-${tone}`}>
+                      <tr
+                        key={order.id}
+                        className={`selectable ${statusTone(order.status, delivered)}`}
+                      >
                         <td className="mono" data-label="注文番号">
                           <Link href={`/orders/${order.id}`} className="row-link">
                             {order.orderNumber}
