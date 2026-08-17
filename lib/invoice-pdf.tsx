@@ -123,16 +123,28 @@ function pngAspect(buffer: Buffer): number {
 /**
  * 住所を「都道府県＋市区町村」と「それ以降」で分けて2行にする。
  * 途中の半端な位置で折り返さず、常に区切りのよいところで改行させる。
+ * 政令市は行政区（福岡市中央区の「中央区」）まで1行目に含める。
  */
 function splitAddress(address: string): string[] {
   const value = address.trim();
   if (!value) return [];
   const prefecture = value.match(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
-  const rest = prefecture ? value.slice(prefecture[0].length) : value;
-  const city = rest.match(/^.+?[市区町村]/);
+  const afterPrefecture = prefecture ? value.slice(prefecture[0].length) : value;
+  const city = afterPrefecture.match(/^.+?[市区町村]/);
   if (!city) return [value];
-  const head = (prefecture?.[0] ?? "") + city[0];
-  const tail = rest.slice(city[0].length).trim();
+
+  let head = (prefecture?.[0] ?? "") + city[0];
+  let rest = afterPrefecture.slice(city[0].length);
+  if (city[0].endsWith("市")) {
+    // 区名は数字・空白を含まない短い語。丁目や建物名を巻き込まないよう字数で制限する
+    const ward = rest.match(/^[^\s\d０-９]{1,4}区/);
+    if (ward) {
+      head += ward[0];
+      rest = rest.slice(ward[0].length);
+    }
+  }
+
+  const tail = rest.trim();
   return tail ? [head, tail] : [head];
 }
 
