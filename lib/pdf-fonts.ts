@@ -15,7 +15,7 @@ const FONT_DIRS = [
   path.join(process.cwd(), ".next", "server", "public", "fonts")
 ].filter((d): d is string => Boolean(d));
 
-function findFont(fileName: string): string {
+export function findFont(fileName: string): string {
   for (const dir of FONT_DIRS) {
     const candidate = path.join(dir, fileName);
     if (fs.existsSync(candidate)) return candidate;
