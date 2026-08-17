@@ -105,6 +105,12 @@ function line(value: string): string {
   return value && value.trim() ? value : "—";
 }
 
+/** ご担当者名に「様」を付ける。すでに敬称付きで入力されていれば二重に付けない */
+function withHonorific(name: string): string {
+  const value = name.trim();
+  return /(様|さま|サマ|殿|御中)$/.test(value) ? value : `${value} 様`;
+}
+
 // ロゴはビルドに同梱した public の画像を読む。無ければ載せずに生成を続ける
 const assetCache = new Map<string, Buffer | null>();
 function loadAsset(name: string): Buffer | null {
@@ -248,7 +254,7 @@ export function InvoiceDocument({
           <View style={styles.billToWrap}>
             <Text style={styles.billTo}>{order.companyName} 御中</Text>
             <Text style={styles.billToAddress}>{order.shippingAddress}</Text>
-            {order.contactName ? <Text style={{ fontSize: 9.5 }}>ご担当：{order.contactName}</Text> : null}
+            {order.contactName ? <Text style={{ fontSize: 9.5 }}>ご担当：{withHonorific(order.contactName)}</Text> : null}
           </View>
 
           <View style={styles.sellerBox}>
