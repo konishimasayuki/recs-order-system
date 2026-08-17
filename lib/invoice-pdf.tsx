@@ -120,6 +120,22 @@ function pngAspect(buffer: Buffer): number {
   return 1;
 }
 
+/**
+ * 住所を「都道府県＋市区町村」と「それ以降」で分けて2行にする。
+ * 途中の半端な位置で折り返さず、常に区切りのよいところで改行させる。
+ */
+function splitAddress(address: string): string[] {
+  const value = address.trim();
+  if (!value) return [];
+  const prefecture = value.match(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
+  const rest = prefecture ? value.slice(prefecture[0].length) : value;
+  const city = rest.match(/^.+?[市区町村]/);
+  if (!city) return [value];
+  const head = (prefecture?.[0] ?? "") + city[0];
+  const tail = rest.slice(city[0].length).trim();
+  return tail ? [head, tail] : [head];
+}
+
 export function InvoiceDocument({
   order,
   seller
@@ -171,7 +187,11 @@ export function InvoiceDocument({
                 {seller.postalCode || seller.address ? (
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>{seller.postalCode || "住所"}</Text>
-                    <Text style={styles.infoValue}>{seller.address}</Text>
+                    <View style={styles.infoValue}>
+                      {splitAddress(seller.address).map((part, i) => (
+                        <Text key={i}>{part}</Text>
+                      ))}
+                    </View>
                   </View>
                 ) : null}
                 {seller.tel ? (
