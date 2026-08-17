@@ -32,20 +32,28 @@ const styles = StyleSheet.create({
     paddingBottom: 4
   },
   billToAddress: { fontSize: 9.5, lineHeight: 1.5, marginBottom: 10 },
-  sellerBox: { width: "44%", fontSize: 9, lineHeight: 1.55, position: "relative" },
-  sellerRow: { flexDirection: "row", alignItems: "flex-start" },
-  sellerLogo: { width: 38, height: 38, marginRight: 8, marginTop: 1 },
+  sellerBox: { width: "44%", fontSize: 9, lineHeight: 1.55 },
+  sellerRow: { flexDirection: "row", alignItems: "center" },
+  sellerLogo: { width: 40, height: 40, marginRight: 8 },
   sellerInfo: { flex: 1 },
-  sellerName: { fontSize: 11, fontWeight: "bold", marginBottom: 3 },
-  // 角印：発行元情報の右端に少し重ねて押す
-  sellerSeal: {
-    position: "absolute",
-    top: -6,
-    right: 0,
-    width: 46,
-    height: 46,
-    opacity: 0.88
+  // 社印（横判ゴム印）風：住所・社名・TEL を判子の文字組で重ねる
+  stampAddress: { fontSize: 8.5, fontWeight: "bold", letterSpacing: 0.4, textAlign: "center" },
+  stampName: {
+    fontSize: 13,
+    fontWeight: "bold",
+    letterSpacing: 0.8,
+    textAlign: "center",
+    marginTop: 2
   },
+  stampTel: {
+    fontSize: 10,
+    fontWeight: "bold",
+    letterSpacing: 1.2,
+    textAlign: "center",
+    marginTop: 2,
+    marginBottom: 4
+  },
+  sellerMeta: { fontSize: 8.5, textAlign: "center" },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 8 },
   metaBox: { fontSize: 9, textAlign: "right", lineHeight: 1.5 },
   totalBanner: {
@@ -121,7 +129,6 @@ export function InvoiceDocument({
   ensureFontsRegistered();
 
   const logo = loadAsset("logo.png");
-  const seal = loadAsset("seal.png");
   const unitPrice = order.unitPrice ?? 0;
   const amounts = calcAmounts(order.quantity, unitPrice);
   const hasBank = Boolean(seller.bankName || seller.accountNumber || seller.accountHolder);
@@ -152,20 +159,26 @@ export function InvoiceDocument({
                 <Image style={styles.sellerLogo} src={{ data: logo, format: "png" }} />
               ) : null}
               <View style={styles.sellerInfo}>
-                <Text style={styles.sellerName}>{seller.name}</Text>
                 {seller.postalCode || seller.address ? (
-                  <Text>
+                  <Text style={styles.stampAddress}>
                     {seller.postalCode} {seller.address}
                   </Text>
                 ) : null}
-                {seller.tel ? <Text>TEL：{seller.tel}{seller.fax ? `　FAX：${seller.fax}` : ""}</Text> : null}
-                {seller.contact ? <Text>担当：{seller.contact}</Text> : null}
-                {seller.registrationNumber ? <Text>登録番号：{seller.registrationNumber}</Text> : null}
+                <Text style={styles.stampName}>{seller.name}</Text>
+                {seller.tel ? (
+                  <Text style={styles.stampTel}>
+                    TEL {seller.tel}
+                    {seller.fax ? `　FAX ${seller.fax}` : ""}
+                  </Text>
+                ) : null}
+                {seller.registrationNumber ? (
+                  <Text style={styles.sellerMeta}>登録番号：{seller.registrationNumber}</Text>
+                ) : null}
+                {seller.contact ? (
+                  <Text style={styles.sellerMeta}>担当：{seller.contact}</Text>
+                ) : null}
               </View>
             </View>
-            {seal ? (
-              <Image style={styles.sellerSeal} src={{ data: seal, format: "png" }} />
-            ) : null}
           </View>
         </View>
 
