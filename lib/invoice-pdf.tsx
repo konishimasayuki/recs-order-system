@@ -1,5 +1,7 @@
+import fs from "fs";
+import path from "path";
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { ensureFontsRegistered } from "./pdf-fonts";
 import {
   Order,
@@ -30,8 +32,20 @@ const styles = StyleSheet.create({
     paddingBottom: 4
   },
   billToAddress: { fontSize: 9.5, lineHeight: 1.5, marginBottom: 10 },
-  sellerBox: { width: "44%", fontSize: 9, lineHeight: 1.55 },
+  sellerBox: { width: "44%", fontSize: 9, lineHeight: 1.55, position: "relative" },
+  sellerRow: { flexDirection: "row", alignItems: "flex-start" },
+  sellerLogo: { width: 38, height: 38, marginRight: 8, marginTop: 1 },
+  sellerInfo: { flex: 1 },
   sellerName: { fontSize: 11, fontWeight: "bold", marginBottom: 3 },
+  // 角印：発行元情報の右端に少し重ねて押す
+  sellerSeal: {
+    position: "absolute",
+    top: -6,
+    right: 0,
+    width: 46,
+    height: 46,
+    opacity: 0.88
+  },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 8 },
   metaBox: { fontSize: 9, textAlign: "right", lineHeight: 1.5 },
   totalBanner: {
@@ -84,6 +98,19 @@ function line(value: string): string {
   return value && value.trim() ? value : "—";
 }
 
+// ロゴ・社印はビルドに同梱した public の画像を読む。無ければ載せずに生成を続ける
+const assetCache = new Map<string, Buffer | null>();
+function loadAsset(name: string): Buffer | null {
+  if (!assetCache.has(name)) {
+    try {
+      assetCache.set(name, fs.readFileSync(path.join(process.cwd(), "public", name)));
+    } catch {
+      assetCache.set(name, null);
+    }
+  }
+  return assetCache.get(name) ?? null;
+}
+
 export function InvoiceDocument({
   order,
   seller
@@ -93,6 +120,8 @@ export function InvoiceDocument({
 }) {
   ensureFontsRegistered();
 
+  const logo = loadAsset("logo.png");
+  const seal = loadAsset("seal.png");
   const unitPrice = order.unitPrice ?? 0;
   const amounts = calcAmounts(order.quantity, unitPrice);
   const hasBank = Boolean(seller.bankName || seller.accountNumber || seller.accountHolder);
@@ -118,15 +147,25 @@ export function InvoiceDocument({
           </View>
 
           <View style={styles.sellerBox}>
-            <Text style={styles.sellerName}>{seller.name}</Text>
-            {seller.postalCode || seller.address ? (
-              <Text>
-                {seller.postalCode} {seller.address}
-              </Text>
+            <View style={styles.sellerRow}>
+              {logo ? (
+                <Image style={styles.sellerLogo} src={{ data: logo, format: "png" }} />
+              ) : null}
+              <View style={styles.sellerInfo}>
+                <Text style={styles.sellerName}>{seller.name}</Text>
+                {seller.postalCode || seller.address ? (
+                  <Text>
+                    {seller.postalCode} {seller.address}
+                  </Text>
+                ) : null}
+                {seller.tel ? <Text>TEL：{seller.tel}{seller.fax ? `　FAX：${seller.fax}` : ""}</Text> : null}
+                {seller.contact ? <Text>担当：{seller.contact}</Text> : null}
+                {seller.registrationNumber ? <Text>登録番号：{seller.registrationNumber}</Text> : null}
+              </View>
+            </View>
+            {seal ? (
+              <Image style={styles.sellerSeal} src={{ data: seal, format: "png" }} />
             ) : null}
-            {seller.tel ? <Text>TEL：{seller.tel}{seller.fax ? `　FAX：${seller.fax}` : ""}</Text> : null}
-            {seller.contact ? <Text>担当：{seller.contact}</Text> : null}
-            {seller.registrationNumber ? <Text>登録番号：{seller.registrationNumber}</Text> : null}
           </View>
         </View>
 
