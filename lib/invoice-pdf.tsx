@@ -1,8 +1,11 @@
 import fs from "fs";
 import path from "path";
 import React from "react";
+import * as fontkit from "fontkit";
 import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { ensureFontsRegistered } from "./pdf-fonts";
+import { ensureFontsRegistered, findFont } from "./pdf-fonts";
+
+type FontkitFont = ReturnType<typeof fontkit.openSync>;
 import {
   Order,
   PRODUCT_NAME_MAIN,
@@ -43,7 +46,6 @@ const styles = StyleSheet.create({
     marginBottom: 5
   },
   infoRow: { flexDirection: "row", marginBottom: 1 },
-  infoLabel: { width: 62, textAlign: "right", marginRight: 10 },
   infoValue: { flex: 1 },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 8 },
   metaBox: { fontSize: 9, textAlign: "right", lineHeight: 1.5 },
@@ -110,6 +112,32 @@ function loadAsset(name: string): Buffer | null {
   return assetCache.get(name) ?? null;
 }
 
+/**
+ * 文字列の描画幅。ラベル列の幅を実測値で決め、
+ * 「〒」の先頭を社名の1文字目の真下に置くために使う。
+ * フォントを読めない環境では概算（半角0.55em・全角1em）にフォールバックする。
+ */
+let metricsFont: FontkitFont | null | undefined;
+function textWidth(value: string, fontSize: number): number {
+  if (metricsFont === undefined) {
+    try {
+      metricsFont = fontkit.openSync(findFont("NotoSansJP-Regular.ttf"));
+    } catch (err) {
+      console.error("[recsgps] フォントの実測に失敗したため概算幅を使います:", err);
+      metricsFont = null;
+    }
+  }
+  if (metricsFont) {
+    const run = metricsFont.layout(value);
+    return (run.advanceWidth / metricsFont.unitsPerEm) * fontSize;
+  }
+  let width = 0;
+  for (const ch of value) {
+    width += /[ -~｡-ﾟ]/.test(ch) ? fontSize * 0.55 : fontSize;
+  }
+  return width;
+}
+
 /** PNGヘッダから縦横比を読む（歪ませずに表示するため） */
 function pngAspect(buffer: Buffer): number {
   if (buffer.length > 24 && buffer.readUInt32BE(12) === 0x49484452 /* IHDR */) {
@@ -158,6 +186,26 @@ export function InvoiceDocument({
   ensureFontsRegistered();
 
   const logo = loadAsset("logo.png");
+  const logoHeight = 34;
+  const logoColumnWidth = logo ? logoHeight * pngAspect(logo) + 10 : 0;
+
+  const infoRows: { label: string; lines: string[] }[] = [];
+  if (seller.postalCode || seller.address) {
+    infoRows.push({
+      label: seller.postalCode || "住所",
+      lines: splitAddress(seller.address)
+    });
+  }
+  if (seller.tel) infoRows.push({ label: "Tel", lines: [seller.tel] });
+  if (seller.fax) infoRows.push({ label: "Fax", lines: [seller.fax] });
+  if (seller.registrationNumber) {
+    infoRows.push({ label: "登録番号", lines: [seller.registrationNumber] });
+  }
+  if (seller.contact) infoRows.push({ label: "担当", lines: [seller.contact] });
+  // 一番長いラベル（通常は〒＋郵便番号）がぴったり収まる幅にして、
+  // 右揃えでも先頭文字が社名の1文字目の真下に来るようにする
+  const labelWidth = Math.max(0, ...infoRows.map((r) => textWidth(r.label, 9)));
+
   const unitPrice = order.unitPrice ?? 0;
   const amounts = calcAmounts(order.quantity, unitPrice);
   const hasBank = Boolean(seller.bankName || seller.accountNumber || seller.accountHolder);
@@ -183,53 +231,33 @@ export function InvoiceDocument({
           </View>
 
           <View style={styles.sellerBox}>
+            {/* 社名の1文字目とラベル列の左端を揃えるため、ロゴ幅ぶんを両方で空ける */}
             <View style={styles.sellerRow}>
-              {logo ? (
-                <Image
-                  style={{
-                    height: 34,
-                    width: 34 * pngAspect(logo),
-                    marginRight: 10
-                  }}
-                  src={{ data: logo, format: "png" }}
-                />
-              ) : null}
+              <View style={{ width: logoColumnWidth }} />
+              <Text style={styles.stampName}>{seller.name}</Text>
+            </View>
+            <View style={styles.sellerRow}>
+              <View style={{ width: logoColumnWidth }}>
+                {logo ? (
+                  <Image
+                    style={{ height: logoHeight, width: logoHeight * pngAspect(logo) }}
+                    src={{ data: logo, format: "png" }}
+                  />
+                ) : null}
+              </View>
               <View style={styles.sellerInfo}>
-                <Text style={styles.stampName}>{seller.name}</Text>
-                {seller.postalCode || seller.address ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>{seller.postalCode || "住所"}</Text>
+                {infoRows.map((row) => (
+                  <View key={row.label} style={styles.infoRow}>
+                    <Text style={{ width: labelWidth, textAlign: "right", marginRight: 10 }}>
+                      {row.label}
+                    </Text>
                     <View style={styles.infoValue}>
-                      {splitAddress(seller.address).map((part, i) => (
-                        <Text key={i}>{part}</Text>
+                      {row.lines.map((text, i) => (
+                        <Text key={i}>{text}</Text>
                       ))}
                     </View>
                   </View>
-                ) : null}
-                {seller.tel ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Tel</Text>
-                    <Text style={styles.infoValue}>{seller.tel}</Text>
-                  </View>
-                ) : null}
-                {seller.fax ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Fax</Text>
-                    <Text style={styles.infoValue}>{seller.fax}</Text>
-                  </View>
-                ) : null}
-                {seller.registrationNumber ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>登録番号</Text>
-                    <Text style={styles.infoValue}>{seller.registrationNumber}</Text>
-                  </View>
-                ) : null}
-                {seller.contact ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>担当</Text>
-                    <Text style={styles.infoValue}>{seller.contact}</Text>
-                  </View>
-                ) : null}
+                ))}
               </View>
             </View>
           </View>
