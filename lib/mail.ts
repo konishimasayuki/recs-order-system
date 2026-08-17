@@ -1,4 +1,4 @@
-import { Order, PRODUCT_NAME, formatDateTime, yen } from "./types";
+import { Order, PRODUCT_NAME, formatDateTime } from "./types";
 
 /**
  * 受注通知メール。RESEND_API_KEY が未設定のうちは何もしない。
@@ -63,9 +63,6 @@ export async function notifyNewOrder(order: Order): Promise<void> {
           <tr><td><strong>ご担当</strong></td><td>${order.contactName || "—"}</td></tr>
           <tr><td><strong>品名</strong></td><td>${PRODUCT_NAME}</td></tr>
           <tr><td><strong>台数</strong></td><td>${order.quantity} 台</td></tr>
-          <tr><td><strong>単価（税込）</strong></td><td>${
-            order.unitPrice === null ? "未確定" : yen(order.unitPrice)
-          }</td></tr>
           <tr><td><strong>納品希望日</strong></td><td>${order.desiredDeliveryDate || "指定なし"}</td></tr>
           <tr><td><strong>納品先</strong></td><td>${order.shippingAddress.replace(/\n/g, "<br/>")}</td></tr>
           <tr><td><strong>備考</strong></td><td>${(order.note || "—").replace(/\n/g, "<br/>")}</td></tr>
