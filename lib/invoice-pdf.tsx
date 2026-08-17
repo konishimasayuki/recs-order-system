@@ -34,13 +34,12 @@ const styles = StyleSheet.create({
   billToAddress: { fontSize: 9.5, lineHeight: 1.5, marginBottom: 10 },
   sellerBox: { width: "50%", fontSize: 9, lineHeight: 1.55 },
   sellerRow: { flexDirection: "row", alignItems: "center" },
-  sellerLogo: { width: 40, height: 40, marginRight: 8 },
   sellerInfo: { flex: 1 },
   // 社印（横判）風：社名を大きく、下にラベル右揃えの2列で住所・Tel等を組む
   stampName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "bold",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     marginBottom: 5
   },
   infoRow: { flexDirection: "row", marginBottom: 1 },
@@ -98,7 +97,7 @@ function line(value: string): string {
   return value && value.trim() ? value : "—";
 }
 
-// ロゴ・社印はビルドに同梱した public の画像を読む。無ければ載せずに生成を続ける
+// ロゴはビルドに同梱した public の画像を読む。無ければ載せずに生成を続ける
 const assetCache = new Map<string, Buffer | null>();
 function loadAsset(name: string): Buffer | null {
   if (!assetCache.has(name)) {
@@ -109,6 +108,16 @@ function loadAsset(name: string): Buffer | null {
     }
   }
   return assetCache.get(name) ?? null;
+}
+
+/** PNGヘッダから縦横比を読む（歪ませずに表示するため） */
+function pngAspect(buffer: Buffer): number {
+  if (buffer.length > 24 && buffer.readUInt32BE(12) === 0x49484452 /* IHDR */) {
+    const w = buffer.readUInt32BE(16);
+    const h = buffer.readUInt32BE(20);
+    if (w > 0 && h > 0) return w / h;
+  }
+  return 1;
 }
 
 export function InvoiceDocument({
@@ -148,7 +157,14 @@ export function InvoiceDocument({
           <View style={styles.sellerBox}>
             <View style={styles.sellerRow}>
               {logo ? (
-                <Image style={styles.sellerLogo} src={{ data: logo, format: "png" }} />
+                <Image
+                  style={{
+                    height: 34,
+                    width: 34 * pngAspect(logo),
+                    marginRight: 10
+                  }}
+                  src={{ data: logo, format: "png" }}
+                />
               ) : null}
               <View style={styles.sellerInfo}>
                 <Text style={styles.stampName}>{seller.name}</Text>
