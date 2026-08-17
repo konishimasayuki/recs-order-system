@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     letterSpacing: 4
   },
   headerRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
-  billToWrap: { width: "52%" },
+  billToWrap: { width: "46%" },
   billTo: {
     fontSize: 13,
     fontWeight: "bold",
@@ -32,28 +32,20 @@ const styles = StyleSheet.create({
     paddingBottom: 4
   },
   billToAddress: { fontSize: 9.5, lineHeight: 1.5, marginBottom: 10 },
-  sellerBox: { width: "44%", fontSize: 9, lineHeight: 1.55 },
+  sellerBox: { width: "50%", fontSize: 9, lineHeight: 1.55 },
   sellerRow: { flexDirection: "row", alignItems: "center" },
   sellerLogo: { width: 40, height: 40, marginRight: 8 },
   sellerInfo: { flex: 1 },
-  // 社印（横判ゴム印）風：住所・社名・TEL を判子の文字組で重ねる
-  stampAddress: { fontSize: 8.5, fontWeight: "bold", letterSpacing: 0.4, textAlign: "center" },
+  // 社印（横判）風：社名を大きく、下にラベル右揃えの2列で住所・Tel等を組む
   stampName: {
     fontSize: 13,
     fontWeight: "bold",
-    letterSpacing: 0.8,
-    textAlign: "center",
-    marginTop: 2
+    letterSpacing: 0.3,
+    marginBottom: 5
   },
-  stampTel: {
-    fontSize: 10,
-    fontWeight: "bold",
-    letterSpacing: 1.2,
-    textAlign: "center",
-    marginTop: 2,
-    marginBottom: 4
-  },
-  sellerMeta: { fontSize: 8.5, textAlign: "center" },
+  infoRow: { flexDirection: "row", marginBottom: 1 },
+  infoLabel: { width: 62, textAlign: "right", marginRight: 10 },
+  infoValue: { flex: 1 },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 8 },
   metaBox: { fontSize: 9, textAlign: "right", lineHeight: 1.5 },
   totalBanner: {
@@ -159,23 +151,36 @@ export function InvoiceDocument({
                 <Image style={styles.sellerLogo} src={{ data: logo, format: "png" }} />
               ) : null}
               <View style={styles.sellerInfo}>
-                {seller.postalCode || seller.address ? (
-                  <Text style={styles.stampAddress}>
-                    {seller.postalCode} {seller.address}
-                  </Text>
-                ) : null}
                 <Text style={styles.stampName}>{seller.name}</Text>
+                {seller.postalCode || seller.address ? (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>{seller.postalCode || "住所"}</Text>
+                    <Text style={styles.infoValue}>{seller.address}</Text>
+                  </View>
+                ) : null}
                 {seller.tel ? (
-                  <Text style={styles.stampTel}>
-                    TEL {seller.tel}
-                    {seller.fax ? `　FAX ${seller.fax}` : ""}
-                  </Text>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Tel</Text>
+                    <Text style={styles.infoValue}>{seller.tel}</Text>
+                  </View>
+                ) : null}
+                {seller.fax ? (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Fax</Text>
+                    <Text style={styles.infoValue}>{seller.fax}</Text>
+                  </View>
                 ) : null}
                 {seller.registrationNumber ? (
-                  <Text style={styles.sellerMeta}>登録番号：{seller.registrationNumber}</Text>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>登録番号</Text>
+                    <Text style={styles.infoValue}>{seller.registrationNumber}</Text>
+                  </View>
                 ) : null}
                 {seller.contact ? (
-                  <Text style={styles.sellerMeta}>担当：{seller.contact}</Text>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>担当</Text>
+                    <Text style={styles.infoValue}>{seller.contact}</Text>
+                  </View>
                 ) : null}
               </View>
             </View>
