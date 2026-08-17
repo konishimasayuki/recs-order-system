@@ -11,7 +11,7 @@ import {
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { mutateState, newId, nextInvoiceNumber, nextOrderNumber, readState } from "@/lib/store";
 import { Delivery, Order, User, deliveredQuantity } from "@/lib/types";
-import { notifyNewOrder } from "@/lib/mail";
+import { notifyNewOrder, sendTestMail } from "@/lib/mail";
 
 function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
@@ -273,6 +273,16 @@ export async function updateSellerAction(formData: FormData) {
 
   revalidatePath("/admin/settings");
   redirect("/admin/settings?tab=seller&ok=saved");
+}
+
+export async function sendTestMailAction() {
+  await requireUser("admin");
+  const error = await sendTestMail();
+  redirect(
+    error
+      ? `/admin/settings?tab=seller&mailtest=${encodeURIComponent(error)}`
+      : "/admin/settings?tab=seller&mailtest=ok"
+  );
 }
 
 // ---------------- 受注側：アカウント管理 ----------------

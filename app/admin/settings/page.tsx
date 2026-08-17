@@ -3,10 +3,12 @@ import AppHeader from "@/components/AppHeader";
 import SubmitButton from "@/components/SubmitButton";
 import {
   createAccountAction,
+  sendTestMailAction,
   updateAccountAction,
   updateSellerAction
 } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
+import { getMailConfig } from "@/lib/mail";
 import { STORAGE_MODE, readState } from "@/lib/store";
 import { formatDate, yen } from "@/lib/types";
 
@@ -36,9 +38,11 @@ export default async function AdminSettingsPage({
     select?: string;
     ok?: string;
     error?: string;
+    mailtest?: string;
   };
 }) {
   const user = await requireUser("admin");
+  const mail = getMailConfig();
   const state = await readState();
   const seller = state.seller;
   const customers = state.users
@@ -508,13 +512,46 @@ export default async function AdminSettingsPage({
                 <tr>
                   <th>受注通知メール</th>
                   <td>
-                    {process.env.RESEND_API_KEY
+                    {mail.enabled
                       ? "有効（Resend）"
                       : "未設定（RESEND_API_KEY を設定すると有効になります）"}
                   </td>
                 </tr>
+                {mail.enabled && (
+                  <>
+                    <tr>
+                      <th>送信元</th>
+                      <td className="mono">{mail.from}</td>
+                    </tr>
+                    <tr>
+                      <th>通知先</th>
+                      <td className="mono">{mail.to.join(", ")}</td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
+
+            {mail.enabled && (
+              <>
+                {searchParams.mailtest === "ok" && (
+                  <div className="success-box" style={{ marginTop: 16 }}>
+                    テストメールを送信しました。{mail.to.join(", ")}{" "}
+                    の受信箱（迷惑メールフォルダも）をご確認ください。
+                  </div>
+                )}
+                {searchParams.mailtest && searchParams.mailtest !== "ok" && (
+                  <div className="error-box" style={{ marginTop: 16 }}>
+                    送信に失敗しました：{searchParams.mailtest}
+                  </div>
+                )}
+                <form action={sendTestMailAction} style={{ marginTop: 16 }}>
+                  <SubmitButton className="btn btn-outline">
+                    テストメールを送信する
+                  </SubmitButton>
+                </form>
+              </>
+            )}
           </div>
         )}
       </div>
