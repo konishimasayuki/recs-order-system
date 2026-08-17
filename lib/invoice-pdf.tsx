@@ -6,6 +6,9 @@ import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/render
 import { ensureFontsRegistered, findFont } from "./pdf-fonts";
 
 type FontkitFont = ReturnType<typeof fontkit.openSync>;
+
+/** 発行元ブロックの1行（ラベルと、折り返しを含む値の各行） */
+type InfoRow = { label: string; lines: string[] };
 import {
   Order,
   PRODUCT_NAME_MAIN,
@@ -15,6 +18,9 @@ import {
   formatDate,
   yen
 } from "./types";
+
+/** 発行元ブロックの行送り。ロゴの縦位置の計算にも使う */
+const LINE_HEIGHT = 1.55;
 
 const styles = StyleSheet.create({
   page: { fontFamily: "NotoSansJP", fontSize: 10, padding: 40, color: "#1a1a1a" },
@@ -35,7 +41,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4
   },
   billToAddress: { fontSize: 9.5, lineHeight: 1.5, marginBottom: 10 },
-  sellerBox: { width: "50%", fontSize: 9, lineHeight: 1.55 },
+  sellerBox: { width: "50%", fontSize: 9, lineHeight: LINE_HEIGHT },
   sellerRow: { flexDirection: "row", alignItems: "center" },
   sellerInfo: { flex: 1 },
   // 社印（横判）風：社名を大きく、下にラベル右揃えの2列で住所・Tel等を組む
@@ -189,22 +195,37 @@ export function InvoiceDocument({
   const logoHeight = 34;
   const logoColumnWidth = logo ? logoHeight * pngAspect(logo) + 10 : 0;
 
-  const infoRows: { label: string; lines: string[] }[] = [];
-  if (seller.postalCode || seller.address) {
-    infoRows.push({
-      label: seller.postalCode || "住所",
-      lines: splitAddress(seller.address)
-    });
-  }
-  if (seller.tel) infoRows.push({ label: "Tel", lines: [seller.tel] });
-  if (seller.fax) infoRows.push({ label: "Fax", lines: [seller.fax] });
+  // ロゴは社名＋住所の横に置くため、住所行だけ他の行と分けて持つ
+  const addressRow: InfoRow | null =
+    seller.postalCode || seller.address
+      ? { label: seller.postalCode || "住所", lines: splitAddress(seller.address) }
+      : null;
+  const otherRows: InfoRow[] = [];
+  if (seller.tel) otherRows.push({ label: "Tel", lines: [seller.tel] });
+  if (seller.fax) otherRows.push({ label: "Fax", lines: [seller.fax] });
   if (seller.registrationNumber) {
-    infoRows.push({ label: "登録番号", lines: [seller.registrationNumber] });
+    otherRows.push({ label: "登録番号", lines: [seller.registrationNumber] });
   }
-  if (seller.contact) infoRows.push({ label: "担当", lines: [seller.contact] });
+  if (seller.contact) otherRows.push({ label: "担当", lines: [seller.contact] });
   // 一番長いラベル（通常は〒＋郵便番号）がぴったり収まる幅にして、
   // 右揃えでも先頭文字が社名の1文字目の真下に来るようにする
-  const labelWidth = Math.max(0, ...infoRows.map((r) => textWidth(r.label, 9)));
+  const labelWidth = Math.max(
+    0,
+    ...[...(addressRow ? [addressRow] : []), ...otherRows].map((r) => textWidth(r.label, 9))
+  );
+
+  const infoRow = (row: InfoRow) => (
+    <View key={row.label} style={styles.infoRow}>
+      <Text style={{ width: labelWidth, textAlign: "right", marginRight: 10 }}>
+        {row.label}
+      </Text>
+      <View style={styles.infoValue}>
+        {row.lines.map((text, i) => (
+          <Text key={i}>{text}</Text>
+        ))}
+      </View>
+    </View>
+  );
 
   const unitPrice = order.unitPrice ?? 0;
   const amounts = calcAmounts(order.quantity, unitPrice);
@@ -231,11 +252,8 @@ export function InvoiceDocument({
           </View>
 
           <View style={styles.sellerBox}>
-            {/* 社名の1文字目とラベル列の左端を揃えるため、ロゴ幅ぶんを両方で空ける */}
-            <View style={styles.sellerRow}>
-              <View style={{ width: logoColumnWidth }} />
-              <Text style={styles.stampName}>{seller.name}</Text>
-            </View>
+            {/* ロゴは社名＋住所のグループに対して縦中央。
+                社名の1文字目とラベル列の左端はロゴ列の幅で揃う */}
             <View style={styles.sellerRow}>
               <View style={{ width: logoColumnWidth }}>
                 {logo ? (
@@ -246,19 +264,13 @@ export function InvoiceDocument({
                 ) : null}
               </View>
               <View style={styles.sellerInfo}>
-                {infoRows.map((row) => (
-                  <View key={row.label} style={styles.infoRow}>
-                    <Text style={{ width: labelWidth, textAlign: "right", marginRight: 10 }}>
-                      {row.label}
-                    </Text>
-                    <View style={styles.infoValue}>
-                      {row.lines.map((text, i) => (
-                        <Text key={i}>{text}</Text>
-                      ))}
-                    </View>
-                  </View>
-                ))}
+                <Text style={styles.stampName}>{seller.name}</Text>
+                {addressRow ? infoRow(addressRow) : null}
               </View>
+            </View>
+            <View style={styles.sellerRow}>
+              <View style={{ width: logoColumnWidth }} />
+              <View style={styles.sellerInfo}>{otherRows.map(infoRow)}</View>
             </View>
           </View>
         </View>
