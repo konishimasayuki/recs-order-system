@@ -3,6 +3,7 @@ import AppHeader from "@/components/AppHeader";
 import SubmitButton from "@/components/SubmitButton";
 import {
   createAccountAction,
+  deleteTestOrdersAction,
   sendTestMailAction,
   updateAccountAction,
   updateSellerAction
@@ -22,7 +23,8 @@ const OK_MESSAGES: Record<string, string> = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   input: "ID・パスワード（4文字以上）・会社名は必須です。",
-  duplicate: "そのIDはすでに使われています。別のIDを指定してください。"
+  duplicate: "そのIDはすでに使われています。別のIDを指定してください。",
+  confirm: "確認欄に「削除」と入力された場合のみ実行します。データは消えていません。"
 };
 
 /**
@@ -39,6 +41,7 @@ export default async function AdminSettingsPage({
     ok?: string;
     error?: string;
     mailtest?: string;
+    count?: string;
   };
 }) {
   const user = await requireUser("admin");
@@ -54,7 +57,12 @@ export default async function AdminSettingsPage({
   // 存在しないIDを指定された場合は未選択として扱う
   const selected = customers.find((c) => c.id === searchParams.select) ?? null;
 
-  const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] : null;
+  const okMessage =
+    searchParams.ok === "cleared"
+      ? `テスト用の注文 ${searchParams.count ?? "0"} 件と、その納品記録を削除しました。`
+      : searchParams.ok
+        ? OK_MESSAGES[searchParams.ok]
+        : null;
   const errorMessage = searchParams.error ? ERROR_MESSAGES[searchParams.error] : null;
 
   return (
@@ -552,6 +560,43 @@ export default async function AdminSettingsPage({
                 </form>
               </>
             )}
+          </div>
+        )}
+
+        {tab === "seller" && (
+          <div className="card">
+            <h2 className="card-title">テストデータの削除</h2>
+            <p className="card-desc">
+              動作確認で作った注文 {state.orders.length} 件と納品記録{" "}
+              {state.deliveries.length} 件をまとめて削除します。発注アカウントと
+              請求元情報は残ります。運用開始前の1回だけお使いください。
+            </p>
+            <details className="edit-details">
+              <summary>テスト注文をすべて削除する</summary>
+              <div className="edit-details-body">
+                <form action={deleteTestOrdersAction}>
+                  <div className="field">
+                    <label htmlFor="confirm">
+                      削除するとご覧のとおり元に戻せません。確認のため「削除」と入力してください。
+                    </label>
+                    <input
+                      id="confirm"
+                      name="confirm"
+                      type="text"
+                      placeholder="削除"
+                      autoComplete="off"
+                      required
+                    />
+                    <p className="field-hint">
+                      注文番号・請求書番号の連番も最初（0001）に戻ります。
+                    </p>
+                  </div>
+                  <SubmitButton className="btn btn-danger">
+                    すべて削除する
+                  </SubmitButton>
+                </form>
+              </div>
+            </details>
           </div>
         )}
       </div>
