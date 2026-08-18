@@ -285,36 +285,6 @@ export async function sendTestMailAction() {
   );
 }
 
-// ---------------- 受注側：テストデータの削除 ----------------
-
-/**
- * 動作確認で作った注文・納品をまとめて消す。取り消せない操作なので、
- * 確認欄に「削除」と入力されたときだけ実行する。
- * 発注アカウントと請求元設定はそのまま残す。
- */
-export async function deleteTestOrdersAction(formData: FormData) {
-  await requireUser("admin");
-
-  if (str(formData, "confirm") !== "削除") {
-    redirect("/admin/settings?tab=seller&error=confirm");
-  }
-
-  const removed = await mutateState<number>((state) => {
-    const count = state.orders.length;
-    state.orders = [];
-    state.deliveries = [];
-    // 注文番号・請求書番号を最初から採り直せるようにカウンタも戻す
-    state.counters = { order: 0, invoice: 0 };
-    return count;
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/orders");
-  revalidatePath("/admin/deliveries");
-  revalidatePath("/orders");
-  redirect(`/admin/settings?tab=seller&ok=cleared&count=${removed}`);
-}
-
 // ---------------- 受注側：アカウント管理 ----------------
 
 export async function createAccountAction(formData: FormData) {
