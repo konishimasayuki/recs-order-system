@@ -185,8 +185,23 @@ export async function registerDeliveryAction(formData: FormData) {
   const trackingNumber = str(formData, "trackingNumber");
   const note = str(formData, "note");
 
+  /**
+   * ダッシュボードの「対応中の受注」からも登録できるようにする。
+   * その場合は注文詳細ではなくダッシュボードへ戻し、失敗時は
+   * 入力中だった発注元の登録欄を開いたままにする。
+   */
+  const companyId = str(formData, "companyId");
+  const backToDashboard = str(formData, "returnTo") === "dashboard";
+  const failureUrl = (reason: string) =>
+    backToDashboard
+      ? `/admin?error=${reason}&deliver=${companyId}`
+      : `/admin/orders/${orderId}?error=${reason}`;
+
+  if (!orderId) {
+    redirect(failureUrl("orderTarget"));
+  }
   if (!Number.isFinite(quantity) || quantity < 1) {
-    redirect(`/admin/orders/${orderId}?error=deliveryQuantity`);
+    redirect(failureUrl("deliveryQuantity"));
   }
 
   const result = await mutateState<"ok" | "over" | "notfound">((state) => {
@@ -217,10 +232,11 @@ export async function registerDeliveryAction(formData: FormData) {
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/deliveries");
   revalidatePath("/admin");
+  if (result !== "ok") {
+    redirect(failureUrl(result));
+  }
   redirect(
-    result === "ok"
-      ? `/admin/orders/${orderId}?ok=delivered`
-      : `/admin/orders/${orderId}?error=${result}`
+    backToDashboard ? "/admin?ok=delivered" : `/admin/orders/${orderId}?ok=delivered`
   );
 }
 
