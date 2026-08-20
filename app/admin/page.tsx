@@ -1,13 +1,26 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
+import SubmitButton from "@/components/SubmitButton";
+import { registerDeliveryAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { allOrders, rollupByCustomer, summarize } from "@/lib/queries";
 import { getStorageStatus, readState } from "@/lib/store";
-import { deliveredQuantity } from "@/lib/types";
+import { deliveredQuantity, formatDate } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
+const DELIVERY_ERRORS: Record<string, string> = {
+  over: "納品台数が注文の残り台数を超えています。台数を確認してください。",
+  deliveryQuantity: "納品台数は1以上の数値で入力してください。",
+  orderTarget: "どの注文への納品か選んでください。",
+  notfound: "対象の注文が見つかりませんでした。"
+};
+
+export default async function AdminDashboard({
+  searchParams
+}: {
+  searchParams: { deliver?: string; ok?: string; error?: string };
+}) {
   const user = await requireUser("admin");
   const state = await readState();
   // 保存先はデータへのアクセス後に確定するため readState() の後に取得する
@@ -64,11 +77,37 @@ export default async function AdminDashboard() {
   const rollup = rollupActive.slice(0, ROLLUP_LIMIT);
   const rollupHidden = rollupActive.length - rollup.length;
 
+  /**
+   * 納品登録の対象。発注元の行から開くと、その会社の未完了の注文が候補になる。
+   * 注文ごとに納品先が違うことがあるため、どの注文に割り当てるかを選ばせる。
+   */
+  const deliverCompanyId = searchParams.deliver;
+  const deliverOrders = deliverCompanyId
+    ? needsActionAll
+        .filter((o) => o.userId === deliverCompanyId)
+        .map((o) => ({
+          ...o,
+          remaining: o.quantity - deliveredQuantity(o.id, state.deliveries)
+        }))
+        .filter((o) => o.remaining > 0)
+    : [];
+  const deliverTarget = deliverOrders.length > 0 ? deliverOrders[0].companyName : null;
+  // 納品先が1つでないときは、割り当て先を選ばないと誤配送につながる
+  const multipleAddresses =
+    new Set(deliverOrders.map((o) => o.shippingAddress.trim())).size > 1;
+  const today = new Date().toISOString().slice(0, 10);
+  const deliveryError = searchParams.error ? DELIVERY_ERRORS[searchParams.error] : null;
+
   return (
     <div className="page-shell">
       <AppHeader user={user} current="/admin" />
 
       <div className="container">
+        {searchParams.ok === "delivered" && (
+          <div className="success-box">納品を登録しました。</div>
+        )}
+        {deliveryError && <div className="error-box">{deliveryError}</div>}
+
         {storage.ephemeral && (
           <div className="notice-box">
             <strong>データが一時領域に保存されています</strong>
@@ -129,6 +168,7 @@ export default async function AdminDashboard() {
                     <th>発注元</th>
                     <th className="num">件数</th>
                     <th className="num">納品済／合計台数</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -145,6 +185,14 @@ export default async function AdminDashboard() {
                       <td className="num" data-label="件数">{row.count} 件</td>
                       <td className="num" data-label="納品済／合計台数">
                         {row.delivered} ／ {row.quantity} 台
+                      </td>
+                      <td className="row-action">
+                        <Link
+                          href={`/admin?deliver=${row.userId}`}
+                          className="btn btn-outline btn-sm"
+                        >
+                          納品を登録
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -200,6 +248,139 @@ export default async function AdminDashboard() {
             </p>
           )}
         </div>
+
+        {deliverTarget && (
+          <div className="modal-backdrop">
+            {/* 背景をタップしても閉じられるように、全面をリンクで覆う */}
+            <Link href="/admin" className="modal-scrim" aria-label="閉じる" />
+            <div className="modal" role="dialog" aria-modal="true">
+              <div className="modal-head">
+                <h2 className="card-title">納品を登録（{deliverTarget}）</h2>
+                <Link href="/admin" className="modal-close" aria-label="閉じる">
+                  ×
+                </Link>
+              </div>
+
+              {multipleAddresses && (
+                <div className="notice-inline">
+                  納品先が複数あります。どの注文（納品先）への納品か選んでください。
+                </div>
+              )}
+
+              <form action={registerDeliveryAction}>
+                <input type="hidden" name="returnTo" value="dashboard" />
+                <input type="hidden" name="companyId" value={deliverCompanyId} />
+
+                {deliverOrders.length === 1 ? (
+                  <>
+                    <input type="hidden" name="orderId" value={deliverOrders[0].id} />
+                    <div className="field">
+                      <span className="label">納品先</span>
+                      <div className="choice-single">
+                        <strong className="mono">{deliverOrders[0].orderNumber}</strong>
+                        <span className="choice-sub">
+                          {deliverOrders[0].shippingAddress}
+                        </span>
+                        <span className="choice-sub">
+                          注文日 {formatDate(deliverOrders[0].orderedAt)}／残り{" "}
+                          {deliverOrders[0].remaining} 台
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="field">
+                    <span className="label">納品先（割り当てる注文）</span>
+                    <div className="choice-list">
+                      {deliverOrders.map((order, index) => (
+                        <label className="choice" key={order.id}>
+                          <input
+                            type="radio"
+                            name="orderId"
+                            value={order.id}
+                            defaultChecked={index === 0}
+                            required
+                          />
+                          <span className="choice-body">
+                            <span className="choice-main">
+                              <strong className="mono">{order.orderNumber}</strong>
+                              <span>残り {order.remaining} 台</span>
+                            </span>
+                            <span className="choice-sub">{order.shippingAddress}</span>
+                            <span className="choice-sub">
+                              注文日 {formatDate(order.orderedAt)}
+                              {order.desiredDeliveryDate
+                                ? `／納品希望日 ${order.desiredDeliveryDate}`
+                                : ""}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="field-row">
+                  <div className="field">
+                    <label htmlFor="deliver-quantity">納品台数</label>
+                    <input
+                      id="deliver-quantity"
+                      name="quantity"
+                      type="number"
+                      min={1}
+                      step={1}
+                      defaultValue={deliverOrders.length === 1 ? deliverOrders[0].remaining : ""}
+                      required
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="deliver-date">納品日</label>
+                    <input
+                      id="deliver-date"
+                      name="deliveredAt"
+                      type="date"
+                      defaultValue={today}
+                    />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="deliver-tracking">送り状番号（任意）</label>
+                  <input id="deliver-tracking" name="trackingNumber" type="text" />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="deliver-note">備考（任意）</label>
+                  <input id="deliver-note" name="note" type="text" />
+                </div>
+
+                <div className="action-row">
+                  <SubmitButton className="btn btn-gold">納品を登録する</SubmitButton>
+                  <Link href="/admin" className="btn btn-outline">
+                    キャンセル
+                  </Link>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {deliverCompanyId && !deliverTarget && (
+          <div className="modal-backdrop">
+            <Link href="/admin" className="modal-scrim" aria-label="閉じる" />
+            <div className="modal" role="dialog" aria-modal="true">
+              <div className="modal-head">
+                <h2 className="card-title">納品を登録</h2>
+                <Link href="/admin" className="modal-close" aria-label="閉じる">
+                  ×
+                </Link>
+              </div>
+              <div className="empty-state">
+                この発注元に納品待ちの注文はありません。
+              </div>
+            </div>
+          </div>
+        )}
 
         <p className="muted" style={{ fontSize: 12.5, textAlign: "right", margin: 0 }}>
           データ保存先：
