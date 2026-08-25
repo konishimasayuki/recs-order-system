@@ -112,6 +112,7 @@ export default async function CustomerDeliveriesPage({
                               status={order.status}
                               delivered={delivered}
                               quantity={order.quantity}
+                              viewer="customer"
                             />
                           ) : (
                             <span className="muted">—</span>
