@@ -49,7 +49,7 @@ export default async function AdminOrderDetail({
   searchParams
 }: {
   params: { id: string };
-  searchParams: { ok?: string; error?: string };
+  searchParams: { ok?: string; error?: string; edit?: string };
 }) {
   const user = await requireUser("admin");
   const state = await readState();
@@ -64,6 +64,9 @@ export default async function AdminOrderDetail({
   const remaining = Math.max(0, order.quantity - delivered);
   const amounts = order.unitPrice === null ? null : calcAmounts(order.quantity, order.unitPrice);
   const today = new Date().toISOString().slice(0, 10);
+
+  const editingQuantity =
+    searchParams.edit === "quantity" && order.status !== "cancelled";
 
   const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] : null;
   const errorMessage = searchParams.error ? ERROR_MESSAGES[searchParams.error] : null;
@@ -109,7 +112,20 @@ export default async function AdminOrderDetail({
               <tr>
                 <th>台数</th>
                 <td className="amount">
-                  {order.quantity} 台（納品済 {delivered} ／ 残 {remaining}）
+                  <span className="row-with-action">
+                    <span>{order.quantity} 台</span>
+                    {order.status !== "cancelled" && (
+                      <Link
+                        href={`/admin/orders/${order.id}?edit=quantity`}
+                        className="btn btn-outline btn-sm"
+                      >
+                        台数を変更
+                      </Link>
+                    )}
+                  </span>
+                  <span className="row-note">
+                    納品済 {delivered} ／ 残 {remaining}
+                  </span>
                 </td>
               </tr>
               <tr>
@@ -138,35 +154,6 @@ export default async function AdminOrderDetail({
             </tbody>
           </table>
 
-          {order.status !== "cancelled" && (
-            <details className="edit-details">
-              <summary className="btn btn-outline btn-sm">台数を変更する</summary>
-              <form action={updateOrderQuantityAction} className="edit-details-body">
-                <input type="hidden" name="orderId" value={order.id} />
-                <div className="field">
-                  <label htmlFor="orderQuantity">台数</label>
-                  <input
-                    id="orderQuantity"
-                    name="quantity"
-                    type="number"
-                    min={Math.max(1, delivered)}
-                    step={1}
-                    defaultValue={order.quantity}
-                    required
-                  />
-                  <p className="field-hint">
-                    {delivered > 0
-                      ? `納品済み ${delivered} 台より少なくはできません。`
-                      : "1台以上で入力してください。"}
-                    {order.invoiceNumber
-                      ? `請求書 ${order.invoiceNumber} は発行済みのため、台数を変えると請求金額も変わります。`
-                      : ""}
-                  </p>
-                </div>
-                <SubmitButton className="btn btn-primary">台数を保存する</SubmitButton>
-              </form>
-            </details>
-          )}
         </div>
 
         {order.unitPrice === null && customer?.defaultUnitPrice != null ? (
@@ -436,6 +423,70 @@ export default async function AdminOrderDetail({
               この注文をキャンセルする
             </SubmitButton>
           </form>
+        )}
+
+        {editingQuantity && (
+          <div className="modal-backdrop">
+            <Link
+              href={`/admin/orders/${order.id}`}
+              className="modal-scrim"
+              aria-label="閉じる"
+            />
+            <div className="modal" role="dialog" aria-modal="true">
+              <div className="modal-head">
+                <h2 className="card-title">台数を変更する</h2>
+                <Link
+                  href={`/admin/orders/${order.id}`}
+                  className="modal-close"
+                  aria-label="閉じる"
+                >
+                  ×
+                </Link>
+              </div>
+
+              <p className="card-desc">
+                注文番号 {order.orderNumber}（{order.companyName}）の台数を変更します。
+                現在 {order.quantity} 台（納品済 {delivered} ／ 残 {remaining}）です。
+              </p>
+
+              <form action={updateOrderQuantityAction}>
+                <input type="hidden" name="orderId" value={order.id} />
+                <div className="field">
+                  <label htmlFor="orderQuantity">台数</label>
+                  <input
+                    id="orderQuantity"
+                    name="quantity"
+                    type="number"
+                    min={Math.max(1, delivered)}
+                    step={1}
+                    defaultValue={order.quantity}
+                    autoFocus
+                    required
+                  />
+                  <p className="field-hint">
+                    {delivered > 0
+                      ? `納品済み ${delivered} 台より少なくはできません。`
+                      : "1台以上で入力してください。"}
+                    {order.invoiceNumber
+                      ? `請求書 ${order.invoiceNumber} は発行済みのため、台数を変えると請求金額も変わります。`
+                      : ""}
+                  </p>
+                </div>
+
+                <div className="action-row">
+                  <SubmitButton className="btn btn-primary">
+                    台数を保存する
+                  </SubmitButton>
+                  <Link
+                    href={`/admin/orders/${order.id}`}
+                    className="btn btn-outline"
+                  >
+                    キャンセル
+                  </Link>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </div>
