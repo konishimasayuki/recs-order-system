@@ -623,11 +623,9 @@ export default async function AdminSettingsPage({
                 <tr>
                   <th>受注通知メール</th>
                   <td>
-                    {mail.suspended
-                      ? "一時停止中（テストのため送信しません）"
-                      : mail.enabled
-                        ? "有効（Resend）"
-                        : "未設定（RESEND_API_KEY を設定すると有効になります）"}
+                    {mail.enabled
+                      ? "有効（Resend）"
+                      : "未設定（RESEND_API_KEY を設定すると有効になります）"}
                   </td>
                 </tr>
                 {mail.enabled && (
