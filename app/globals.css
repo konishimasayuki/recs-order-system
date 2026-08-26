@@ -728,6 +728,32 @@ textarea:focus {
   white-space: nowrap;
 }
 
+/* 明細行の右端にボタンを置く（台数の変更など） */
+.row-with-action {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.row-with-action > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 幅が足りずボタンが次の行に落ちても右端に置く */
+.row-with-action .btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.row-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
 .detail-table td.amount {
   font-variant-numeric: tabular-nums;
 }
