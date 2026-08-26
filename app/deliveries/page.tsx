@@ -21,7 +21,7 @@ export default async function CustomerDeliveriesPage({
   const orders = ordersOf(state, user.id);
   const orderIds = new Set(orders.map((o) => o.id));
   const deliveries = deliveriesOf(state, orderIds);
-  const summary = summarize(orders, state.deliveries, state.invoices);
+  const summary = summarize(orders, state.deliveries);
   const orderMap = new Map(orders.map((o) => [o.id, o]));
   const page = clampPage(searchParams.page, deliveries.length, PER_PAGE);
   const pageDeliveries = deliveries.slice((page - 1) * PER_PAGE, page * PER_PAGE);

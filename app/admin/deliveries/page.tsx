@@ -37,7 +37,7 @@ export default async function AdminDeliveriesPage({
     });
   }
 
-  const summary = summarize(orders, state.deliveries, state.invoices);
+  const summary = summarize(orders, state.deliveries);
   const page = clampPage(searchParams.page, deliveries.length, PER_PAGE);
   const pageDeliveries = deliveries.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 

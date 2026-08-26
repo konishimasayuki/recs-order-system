@@ -1141,27 +1141,6 @@ textarea:focus {
   margin-top: 2px;
 }
 
-/* まとめ請求で、選んだ注文ごとに請求台数を入れる欄 */
-.choice-qty {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 12px;
-  flex-wrap: wrap;
-}
-
-.choice-qty label {
-  color: var(--color-text-muted);
-  font-weight: 700;
-}
-
-.choice-qty input {
-  width: 90px;
-  padding: 6px 10px;
-  font-size: 14px;
-}
-
 .choice-single {
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -1540,12 +1519,6 @@ textarea:focus {
 
   .data-table.pair-cards tbody td.span-2 {
     grid-column: 1 / -1;
-  }
-
-  /* 注文番号を並べた長い値なども、はみ出さずに折り返す */
-  .data-table.pair-cards tbody td {
-    min-width: 0;
-    overflow-wrap: anywhere;
   }
 
   /* 上の display:block が汎用の sm-empty（空セル非表示）を上書きしないようにする */

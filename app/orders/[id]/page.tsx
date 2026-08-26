@@ -12,7 +12,6 @@ import {
   deliveredQuantity,
   formatDate,
   formatDateTime,
-  invoicesOfOrder,
   yen
 } from "@/lib/types";
 
@@ -39,7 +38,6 @@ export default async function CustomerOrderDetail({
     .filter((d) => d.orderId === order.id)
     .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt));
   const delivered = deliveredQuantity(order.id, state.deliveries);
-  const orderInvoices = invoicesOfOrder(order.id, state.invoices);
   const amounts = order.unitPrice === null ? null : calcAmounts(order.quantity, order.unitPrice);
   const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] : null;
   const canCancel = order.status === "pending" && delivered === 0;
@@ -144,28 +142,12 @@ export default async function CustomerOrderDetail({
               <tr>
                 <th>請求書</th>
                 <td>
-                  {orderInvoices.length === 0 ? (
-                    <span className="muted">未発行</span>
+                  {order.invoiceNumber ? (
+                    <>
+                      {order.invoiceNumber}（{formatDate(order.invoicedAt ?? "")} 発行）
+                    </>
                   ) : (
-                    /* 分割請求・まとめ請求があるため複数行になりうる */
-                    orderInvoices.map((inv) => {
-                      const qty = inv.lines
-                        .filter((l) => l.orderId === order.id)
-                        .reduce((s, l) => s + l.quantity, 0);
-                      return (
-                        <div key={inv.id}>
-                          <a
-                            className="link"
-                            href={`/api/invoice/${inv.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {inv.invoiceNumber}
-                          </a>
-                          （{formatDate(inv.issuedAt)} 発行／{qty} 台）
-                        </div>
-                      );
-                    })
+                    <span className="muted">未発行</span>
                   )}
                 </td>
               </tr>
@@ -173,16 +155,14 @@ export default async function CustomerOrderDetail({
           </table>
 
           <div className="action-row">
-            {orderInvoices.length > 0 && (
+            {order.invoiceNumber && (
               <a
                 className="btn btn-primary"
-                href={`/api/invoice/${orderInvoices[0].id}`}
+                href={`/api/invoice/${order.id}`}
                 target="_blank"
                 rel="noreferrer"
               >
-                {orderInvoices.length > 1
-                  ? "最新の請求書PDFをダウンロード"
-                  : "請求書PDFをダウンロード"}
+                請求書PDFをダウンロード
               </a>
             )}
             <Link href="/orders/new" className="btn btn-outline">

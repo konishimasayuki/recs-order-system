@@ -26,7 +26,7 @@ export default async function AdminDashboard({
   // 保存先はデータへのアクセス後に確定するため readState() の後に取得する
   const storage = getStorageStatus();
   const orders = allOrders(state);
-  const summary = summarize(orders, state.deliveries, state.invoices);
+  const summary = summarize(orders, state.deliveries);
   /**
    * 請求元の案内は住所が未入力のときだけ出す。
    * 以前はインボイス登録番号も必須にしていたが、登録番号を使わない運用でも

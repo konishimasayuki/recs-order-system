@@ -14,7 +14,7 @@ import { requireUser } from "@/lib/auth";
 import { getMailConfig } from "@/lib/mail";
 import { allOrders } from "@/lib/queries";
 import { STORAGE_MODE, readState } from "@/lib/store";
-import { deliveredQuantity, formatDate, invoicesOfOrder, yen } from "@/lib/types";
+import { deliveredQuantity, formatDate, yen } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -81,9 +81,6 @@ export default async function AdminSettingsPage({
     : null;
   const deleteTargetDeliveries = deleteTarget
     ? state.deliveries.filter((d) => d.orderId === deleteTarget.id)
-    : [];
-  const deleteTargetInvoices = deleteTarget
-    ? invoicesOfOrder(deleteTarget.id, state.invoices)
     : [];
 
   const okMessage =
@@ -626,9 +623,11 @@ export default async function AdminSettingsPage({
                 <tr>
                   <th>受注通知メール</th>
                   <td>
-                    {mail.enabled
-                      ? "有効（Resend）"
-                      : "未設定（RESEND_API_KEY を設定すると有効になります）"}
+                    {mail.suspended
+                      ? "一時停止中（テストのため送信しません）"
+                      : mail.enabled
+                        ? "有効（Resend）"
+                        : "未設定（RESEND_API_KEY を設定すると有効になります）"}
                   </td>
                 </tr>
                 {mail.enabled && (
@@ -717,11 +716,7 @@ export default async function AdminSettingsPage({
                   <tr>
                     <th>請求書</th>
                     <td className="mono">
-                      {deleteTargetInvoices.length > 0
-                        ? deleteTargetInvoices
-                            .map((inv) => inv.invoiceNumber)
-                            .join("・")
-                        : "未発行"}
+                      {deleteTarget.invoiceNumber ?? "未発行"}
                     </td>
                   </tr>
                 </tbody>
@@ -730,8 +725,8 @@ export default async function AdminSettingsPage({
               <div className="notice-inline" style={{ marginTop: 16 }}>
                 削除すると元に戻せません。注文番号{" "}
                 {deleteTarget.orderNumber} は次の注文で再び使われます。
-                {deleteTargetInvoices.length > 0
-                  ? `発行済みの請求書 ${deleteTargetInvoices.length} 件からこの注文の明細が取り除かれ、明細がなくなった請求書は削除されます。`
+                {deleteTarget.invoiceNumber
+                  ? `発行済みの請求書 ${deleteTarget.invoiceNumber} も無効になります。`
                   : ""}
               </div>
 

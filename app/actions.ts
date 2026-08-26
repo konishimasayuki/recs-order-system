@@ -10,16 +10,7 @@ import {
 } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { mutateState, newId, nextInvoiceNumber, nextOrderNumber, readState } from "@/lib/store";
-import {
-  AppState,
-  Delivery,
-  InvoiceLine,
-  Order,
-  User,
-  billableQuantity,
-  deliveredQuantity,
-  invoicedQuantity
-} from "@/lib/types";
+import { Delivery, Order, User, deliveredQuantity } from "@/lib/types";
 import { notifyNewOrder, sendTestMail } from "@/lib/mail";
 
 function str(fd: FormData, key: string): string {
@@ -151,141 +142,81 @@ export async function updateUnitPriceAction(formData: FormData) {
 }
 
 /**
- * 単価を決める。未保存でも発注元に標準単価があればそれを適用する
- * （詳細画面は標準単価をそのまま表示しており、保存操作を挟ませない）。
+ * 受注側が注文台数を変更する。
+ * すでに納品した台数より少なくはできない。台数の変更に合わせて
+ * 「納品完了」かどうかの状況も付け直す。
  */
-function resolveUnitPrice(state: AppState, order: Order): number | null {
-  if (order.unitPrice !== null) return order.unitPrice;
-  const customer = state.users.find((u) => u.id === order.userId);
-  if (customer?.defaultUnitPrice == null) return null;
-  order.unitPrice = customer.defaultUnitPrice;
-  return order.unitPrice;
-}
-
-/** 全台数を請求し終えたら「請求書発行済」にする（納品完了はそのまま） */
-function refreshInvoiceStatus(state: AppState, order: Order): void {
-  const invoiced = invoicedQuantity(order.id, state.invoices);
-  if (order.status === "pending" && invoiced >= order.quantity) {
-    order.status = "invoiced";
-  }
-}
-
-/**
- * 請求書を発行する。納品済みかつ単価が決まっている台数の範囲で、
- * 台数を指定して何回でも発行できる。
- */
-export async function issueInvoiceAction(formData: FormData) {
+export async function updateOrderQuantityAction(formData: FormData) {
   await requireUser("admin");
   const orderId = str(formData, "orderId");
-  const quantity = int(formData, "quantity");
+  const quantity = Number(str(formData, "quantity"));
 
-  const result = await mutateState<string>((state) => {
-    const order = state.orders.find((o) => o.id === orderId);
-    if (!order) return "notfound";
-    if (resolveUnitPrice(state, order) === null) return "noprice";
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    redirect(`/admin/orders/${orderId}?error=quantity`);
+  }
 
-    const billable = billableQuantity(order, state.deliveries, state.invoices);
-    if (billable <= 0) return "nobillable";
-    if (!Number.isFinite(quantity) || quantity < 1 || quantity > billable) {
-      return "quantity";
+  const result = await mutateState<"ok" | "notfound" | "cancelled" | "belowDelivered">(
+    (state) => {
+      const order = state.orders.find((o) => o.id === orderId);
+      if (!order) return "notfound";
+      if (order.status === "cancelled") return "cancelled";
+
+      const delivered = deliveredQuantity(order.id, state.deliveries);
+      if (quantity < delivered) return "belowDelivered";
+
+      order.quantity = quantity;
+      if (delivered >= quantity) {
+        order.status = "delivered";
+      } else if (order.status === "delivered") {
+        order.status = order.invoiceNumber ? "invoiced" : "pending";
+      }
+      return "ok";
     }
-
-    const invoiceNumber = nextInvoiceNumber(state);
-    state.invoices.push({
-      id: newId("inv"),
-      invoiceNumber,
-      userId: order.userId,
-      companyName: order.companyName,
-      issuedAt: new Date().toISOString(),
-      lines: [
-        {
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          quantity,
-          unitPrice: order.unitPrice as number
-        }
-      ]
-    });
-    refreshInvoiceStatus(state, order);
-    return `ok:${invoiceNumber}`;
-  });
+  );
 
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin");
-  revalidatePath("/admin/invoices");
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/deliveries");
   revalidatePath("/orders");
-  // 発行のたびにURLが変わるようにする。同じURLに戻すとクライアント側の
-  // キャッシュで発行前の内容が表示されてしまう
   redirect(
-    result.startsWith("ok:")
-      ? `/admin/orders/${orderId}?ok=invoiced&no=${encodeURIComponent(result.slice(3))}`
+    result === "ok"
+      ? `/admin/orders/${orderId}?ok=quantity`
       : `/admin/orders/${orderId}?error=${result}`
   );
 }
 
-/**
- * まとめ請求。同じ発注元の複数の注文を、注文ごとに台数を指定して
- * 1枚の請求書にまとめる。
- */
-export async function issueBulkInvoiceAction(formData: FormData) {
+export async function issueInvoiceAction(formData: FormData) {
   await requireUser("admin");
-  const companyId = str(formData, "companyId");
-  const picked = formData.getAll("orderIds").map((v) => String(v));
+  const orderId = str(formData, "orderId");
 
-  const back = (query: string) =>
-    `/admin/invoices/new?company=${encodeURIComponent(companyId)}&${query}`;
-
-  if (picked.length === 0) {
-    redirect(back("error=empty"));
-  }
-
-  const result = await mutateState<string>((state) => {
-      const lines: InvoiceLine[] = [];
-      const targets: Order[] = [];
-
-      for (const orderId of picked) {
-        const order = state.orders.find(
-          (o) => o.id === orderId && o.userId === companyId
-        );
-        if (!order) return "notfound";
-        if (resolveUnitPrice(state, order) === null) return "noprice";
-
-        const billable = billableQuantity(order, state.deliveries, state.invoices);
-        const quantity = int(formData, `quantity_${orderId}`);
-        if (!Number.isFinite(quantity) || quantity < 1 || quantity > billable) {
-          return "quantity";
-        }
-        lines.push({
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          quantity,
-          unitPrice: order.unitPrice as number
-        });
-        targets.push(order);
+  const result = await mutateState<"ok" | "noprice" | "notfound">((state) => {
+    const order = state.orders.find((o) => o.id === orderId);
+    if (!order) return "notfound";
+    if (order.unitPrice === null) {
+      // 単価が未保存でも発注元に標準単価があればそれを適用して発行する。
+      // 詳細画面は標準単価をそのまま表示しており、保存操作を挟ませない
+      const customer = state.users.find((u) => u.id === order.userId);
+      if (customer?.defaultUnitPrice != null) {
+        order.unitPrice = customer.defaultUnitPrice;
+      } else {
+        return "noprice";
       }
-
-      const first = targets[0];
-      const invoiceNumber = nextInvoiceNumber(state);
-      state.invoices.push({
-        id: newId("inv"),
-        invoiceNumber,
-        userId: companyId,
-        companyName: first.companyName,
-        issuedAt: new Date().toISOString(),
-        lines
-      });
-      for (const order of targets) refreshInvoiceStatus(state, order);
-      return `ok:${invoiceNumber}`;
+    }
+    if (!order.invoiceNumber) {
+      order.invoiceNumber = nextInvoiceNumber(state);
+      order.invoicedAt = new Date().toISOString();
+    }
+    if (order.status === "pending") order.status = "invoiced";
+    return "ok";
   });
 
+  revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin");
-  revalidatePath("/admin/orders");
-  revalidatePath("/admin/invoices");
-  revalidatePath("/orders");
   redirect(
-    result.startsWith("ok:")
-      ? `/admin/invoices?ok=issued&no=${encodeURIComponent(result.slice(3))}`
-      : back(`error=${result}`)
+    result === "ok"
+      ? `/admin/orders/${orderId}?ok=invoiced`
+      : `/admin/orders/${orderId}?error=${result}`
   );
 }
 
@@ -418,9 +349,7 @@ export async function sendTestMailAction() {
 // ---------------- 受注側：注文の削除 ----------------
 
 /**
- * 注文を1件だけ削除する。紐づく納品記録も一緒に消し、
- * 発行済み請求書からはその注文の明細行を取り除く
- * （明細が空になった請求書は請求書ごと削除する）。
+ * 注文を1件だけ削除する。紐づく納品記録も一緒に消す。
  * 採番は「空いている一番小さい番号」を使うため、削除した注文番号は
  * 次の注文で再び使われる。
  */
@@ -433,19 +362,12 @@ export async function deleteOrderAction(formData: FormData) {
     if (index < 0) return null;
     const [order] = state.orders.splice(index, 1);
     state.deliveries = state.deliveries.filter((d) => d.orderId !== order.id);
-    state.invoices = state.invoices
-      .map((inv) => ({
-        ...inv,
-        lines: inv.lines.filter((line) => line.orderId !== order.id)
-      }))
-      .filter((inv) => inv.lines.length > 0);
     return order.orderNumber;
   });
 
   revalidatePath("/admin");
   revalidatePath("/admin/orders");
   revalidatePath("/admin/deliveries");
-  revalidatePath("/admin/invoices");
   revalidatePath("/admin/settings");
   revalidatePath("/orders");
   redirect(
