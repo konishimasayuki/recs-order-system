@@ -338,6 +338,37 @@ export async function sendTestMailAction() {
   );
 }
 
+// ---------------- 受注側：注文の削除 ----------------
+
+/**
+ * 注文を1件だけ削除する。紐づく納品記録も一緒に消す。
+ * 採番は「空いている一番小さい番号」を使うため、削除した注文番号は
+ * 次の注文で再び使われる。
+ */
+export async function deleteOrderAction(formData: FormData) {
+  await requireUser("admin");
+  const orderId = str(formData, "orderId");
+
+  const removed = await mutateState<string | null>((state) => {
+    const index = state.orders.findIndex((o) => o.id === orderId);
+    if (index < 0) return null;
+    const [order] = state.orders.splice(index, 1);
+    state.deliveries = state.deliveries.filter((d) => d.orderId !== order.id);
+    return order.orderNumber;
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/deliveries");
+  revalidatePath("/admin/settings");
+  revalidatePath("/orders");
+  redirect(
+    removed
+      ? `/admin/settings?tab=orders&ok=deleted&number=${encodeURIComponent(removed)}`
+      : "/admin/settings?tab=orders&error=notfound"
+  );
+}
+
 // ---------------- 受注側：アカウント管理 ----------------
 
 export async function createAccountAction(formData: FormData) {
