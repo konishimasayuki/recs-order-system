@@ -1,6 +1,7 @@
-import { ORDER_STATUS_LABEL, OrderStatus } from "@/lib/types";
+import { OrderStatus, Viewer, orderStatusLabel } from "@/lib/types";
 
 const CLASS: Record<OrderStatus, string> = {
+  ordered: "badge-ordered",
   pending: "badge-pending",
   invoiced: "badge-invoiced",
   delivered: "badge-delivered",
@@ -10,11 +11,13 @@ const CLASS: Record<OrderStatus, string> = {
 export default function StatusBadge({
   status,
   delivered,
-  quantity
+  quantity,
+  viewer = "admin"
 }: {
   status: OrderStatus;
   delivered?: number;
   quantity?: number;
+  viewer?: Viewer;
 }) {
   const partial =
     status !== "cancelled" &&
@@ -30,5 +33,7 @@ export default function StatusBadge({
     );
   }
 
-  return <span className={`badge ${CLASS[status]}`}>{ORDER_STATUS_LABEL[status]}</span>;
+  return (
+    <span className={`badge ${CLASS[status]}`}>{orderStatusLabel(status, viewer)}</span>
+  );
 }
