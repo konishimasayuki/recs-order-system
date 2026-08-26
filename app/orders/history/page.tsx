@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { ordersOf, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
 import {
-  CUSTOMER_STATUS_LABEL,
+  ORDER_STATUS_LABEL,
   OrderStatus,
   deliveredQuantity,
   formatDate,
@@ -18,13 +18,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const STATUS_KEYS: OrderStatus[] = [
-  "ordered",
-  "pending",
-  "invoiced",
-  "delivered",
-  "cancelled"
-];
+const STATUS_KEYS: OrderStatus[] = ["pending", "invoiced", "delivered", "cancelled"];
 
 const PER_PAGE = 20;
 
@@ -75,7 +69,7 @@ export default async function OrderHistoryPage({
                   columns: 2,
                   options: STATUS_KEYS.map((s) => ({
                     value: s,
-                    label: CUSTOMER_STATUS_LABEL[s]
+                    label: ORDER_STATUS_LABEL[s]
                   }))
                 }
               ]}
@@ -129,7 +123,6 @@ export default async function OrderHistoryPage({
                             status={order.status}
                             delivered={delivered}
                             quantity={order.quantity}
-                            viewer="customer"
                           />
                         </td>
                         <td className="num" data-label="金額（税込）">

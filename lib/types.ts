@@ -26,39 +26,14 @@ export interface User {
   createdAt: string;
 }
 
-/** ordered＝発注直後（受注側がまだ受け付けていない） */
-export type OrderStatus =
-  | "ordered"
-  | "pending"
-  | "invoiced"
-  | "delivered"
-  | "cancelled";
+export type OrderStatus = "pending" | "invoiced" | "delivered" | "cancelled";
 
-/** 受注側（MIAMIホールディングス）から見た表示 */
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  ordered: "受付待",
   pending: "受付済",
   invoiced: "請求書発行済",
   delivered: "納品完了",
   cancelled: "キャンセル"
 };
-
-/**
- * 発注側から見た表示。受注側が受け付けるまでは「発注済」と見せる
- * （発注側にとっては受付の待ち状態ではなく、注文が出せた状態のため）。
- */
-export const CUSTOMER_STATUS_LABEL: Record<OrderStatus, string> = {
-  ...ORDER_STATUS_LABEL,
-  ordered: "発注済"
-};
-
-export type Viewer = "admin" | "customer";
-
-export function orderStatusLabel(status: OrderStatus, viewer: Viewer): string {
-  return viewer === "customer"
-    ? CUSTOMER_STATUS_LABEL[status]
-    : ORDER_STATUS_LABEL[status];
-}
 
 export interface Order {
   id: string;

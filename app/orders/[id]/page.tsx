@@ -40,8 +40,7 @@ export default async function CustomerOrderDetail({
   const delivered = deliveredQuantity(order.id, state.deliveries);
   const amounts = order.unitPrice === null ? null : calcAmounts(order.quantity, order.unitPrice);
   const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] : null;
-  const canCancel =
-    (order.status === "ordered" || order.status === "pending") && delivered === 0;
+  const canCancel = order.status === "pending" && delivered === 0;
 
   return (
     <div className="page-shell">
@@ -75,7 +74,6 @@ export default async function CustomerOrderDetail({
               status={order.status}
               delivered={delivered}
               quantity={order.quantity}
-              viewer="customer"
             />
           </div>
 

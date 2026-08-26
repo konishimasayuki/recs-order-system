@@ -119,7 +119,6 @@ export default async function CustomerDashboard({
                             status={order.status}
                             delivered={delivered}
                             quantity={order.quantity}
-                            viewer="customer"
                           />
                         </td>
                       </tr>

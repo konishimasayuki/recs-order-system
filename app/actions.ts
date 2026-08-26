@@ -81,8 +81,7 @@ export async function createOrderAction(formData: FormData) {
       unitPrice: user.defaultUnitPrice,
       shippingAddress,
       note,
-      // 受注側が受け付けるまでは ordered（発注側の表示は「発注済」）
-      status: "ordered",
+      status: "pending",
       orderedAt: new Date().toISOString(),
       invoiceNumber: null,
       invoicedAt: null,
@@ -108,10 +107,8 @@ export async function cancelOrderAction(formData: FormData) {
     if (!order) return;
     const isOwner = order.userId === user.id;
     if (user.role !== "admin" && !isOwner) return;
-    // 発注側は受付前・受付済のうちのみ取消可能。受注側はいつでも可能。
-    if (user.role !== "admin" && order.status !== "ordered" && order.status !== "pending") {
-      return;
-    }
+    // 発注側は受付済のうちのみ取消可能。受注側はいつでも可能。
+    if (user.role !== "admin" && order.status !== "pending") return;
     if (deliveredQuantity(order.id, state.deliveries) > 0) return;
     order.status = "cancelled";
   });
@@ -119,36 +116,6 @@ export async function cancelOrderAction(formData: FormData) {
   revalidatePath("/orders");
   revalidatePath("/admin");
   redirect(user.role === "admin" ? `/admin/orders/${orderId}?ok=cancelled` : `/orders/${orderId}?ok=cancelled`);
-}
-
-// ---------------- 受注側：受付 ----------------
-
-/**
- * 発注を受け付けて「受付済」にする。受注側の一覧・詳細で
- * 「受付待」のときだけ押せる。
- */
-export async function acceptOrderAction(formData: FormData) {
-  await requireUser("admin");
-  const orderId = str(formData, "orderId");
-  const returnTo = str(formData, "returnTo");
-
-  await mutateState((state) => {
-    const order = state.orders.find((o) => o.id === orderId);
-    if (!order || order.status !== "ordered") return;
-    order.status = "pending";
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/orders");
-  revalidatePath(`/admin/orders/${orderId}`);
-  revalidatePath("/orders");
-
-  // 戻り先には必ず ok を付ける。同じURLに戻すとクライアント側のキャッシュで
-  // 更新前の一覧が表示されてしまうため
-  if (returnTo && returnTo.startsWith("/admin")) {
-    redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}ok=accepted`);
-  }
-  redirect(`/admin/orders/${orderId}?ok=accepted`);
 }
 
 // ---------------- 受注側：単価・請求書 ----------------
@@ -195,10 +162,7 @@ export async function issueInvoiceAction(formData: FormData) {
       order.invoiceNumber = nextInvoiceNumber(state);
       order.invoicedAt = new Date().toISOString();
     }
-    // 請求書を出す時点で受付済とみなす
-    if (order.status === "ordered" || order.status === "pending") {
-      order.status = "invoiced";
-    }
+    if (order.status === "pending") order.status = "invoiced";
     return "ok";
   });
 
@@ -259,9 +223,8 @@ export async function registerDeliveryAction(formData: FormData) {
 
     if (already + quantity >= order.quantity) {
       order.status = "delivered";
-    } else if (order.status === "ordered" || order.status === "pending") {
-      // 納品に着手した時点で受付前のままにはしない
-      order.status = order.invoiceNumber ? "invoiced" : "pending";
+    } else if (order.status === "pending" && order.invoiceNumber) {
+      order.status = "invoiced";
     }
     return "ok";
   });
@@ -335,37 +298,6 @@ export async function sendTestMailAction() {
     error
       ? `/admin/settings?tab=seller&mailtest=${encodeURIComponent(error)}`
       : "/admin/settings?tab=seller&mailtest=ok"
-  );
-}
-
-// ---------------- 受注側：注文の削除 ----------------
-
-/**
- * 注文を1件だけ削除する。紐づく納品記録も一緒に消す。
- * 採番は「空いている一番小さい番号」を使うため、削除した注文番号は
- * 次の注文で再び使われる。
- */
-export async function deleteOrderAction(formData: FormData) {
-  await requireUser("admin");
-  const orderId = str(formData, "orderId");
-
-  const removed = await mutateState<string | null>((state) => {
-    const index = state.orders.findIndex((o) => o.id === orderId);
-    if (index < 0) return null;
-    const [order] = state.orders.splice(index, 1);
-    state.deliveries = state.deliveries.filter((d) => d.orderId !== order.id);
-    return order.orderNumber;
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/orders");
-  revalidatePath("/admin/deliveries");
-  revalidatePath("/admin/settings");
-  revalidatePath("/orders");
-  redirect(
-    removed
-      ? `/admin/settings?tab=orders&ok=deleted&number=${encodeURIComponent(removed)}`
-      : "/admin/settings?tab=orders&error=notfound"
   );
 }
 

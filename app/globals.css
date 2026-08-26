@@ -582,37 +582,10 @@ textarea:focus {
   line-height: 1.6;
 }
 
-/* 受付待。受注側の対応が必要な状態なので目立つ色にする */
-.badge-ordered {
+.badge-pending {
   background: var(--color-warn-bg);
   color: var(--color-warn);
   border: 1px solid #e6d0a0;
-}
-
-.badge-pending {
-  background: #e9f4f2;
-  color: #1d6f68;
-  border: 1px solid #a8d3cd;
-}
-
-/* 状況そのものを押して次に進めるボタン（受付待 → 受付済） */
-.badge-button {
-  font-family: inherit;
-  cursor: pointer;
-  border-style: dashed;
-  border-width: 1.5px;
-}
-
-.badge-button::after {
-  content: " ▸";
-}
-
-.badge-button:hover {
-  background: #f7ecd4;
-}
-
-.inline-form {
-  display: inline-block;
 }
 
 .badge-invoiced {
@@ -643,14 +616,9 @@ textarea:focus {
  * tone-*：行（スマホではカード全体）を状況バッジと同じ色で塗る。
  * カード背景がバッジ色になるため、中のバッジは枠と背景を外して文字だけにする。
  */
-.data-table tbody tr.tone-ordered {
+.data-table tbody tr.tone-pending {
   background: var(--color-warn-bg);
   border-color: #e6d0a0;
-}
-
-.data-table tbody tr.tone-pending {
-  background: #e9f4f2;
-  border-color: #a8d3cd;
 }
 
 .data-table tbody tr.tone-invoiced {
@@ -1515,13 +1483,8 @@ textarea:focus {
     inset: 0;
   }
 
-  /*
-   * カード内の別リンク（請求書PDF等）や操作ボタン（受付待など）は
-   * 全面リンクより手前に置き、個別に押せるようにする
-   */
-  .data-table tbody tr.selectable a:not(.row-link),
-  .data-table tbody tr.selectable button,
-  .data-table tbody tr.selectable form {
+  /* カード内の別リンク（請求書PDF等）は全面リンクより手前に置き、個別に押せるようにする */
+  .data-table tbody tr.selectable a:not(.row-link) {
     position: relative;
     z-index: 1;
   }
