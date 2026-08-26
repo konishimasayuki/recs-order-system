@@ -6,7 +6,7 @@ const nextConfig = {
     // 請求書PDFは実行時に public/fonts のTTFとロゴ画像（配置されていれば）を読む。
     // 静的アセットはサーバーレス関数のバンドルに自動では含まれないため明示的に同梱する。
     outputFileTracingIncludes: {
-      "/api/invoice/[orderId]": ["./public/fonts/**", "./public/logo*.png"]
+      "/api/invoice/[invoiceId]": ["./public/fonts/**", "./public/logo*.png"]
     }
   }
 };

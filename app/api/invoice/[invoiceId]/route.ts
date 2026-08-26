@@ -4,13 +4,14 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getCurrentUser } from "@/lib/auth";
 import { InvoiceDocument } from "@/lib/invoice-pdf";
 import { readState } from "@/lib/store";
+import { invoicesOfOrder } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { orderId: string } }
+  { params }: { params: { invoiceId: string } }
 ) {
   const user = await getCurrentUser();
   if (!user) {
@@ -18,25 +19,39 @@ export async function GET(
   }
 
   const state = await readState();
-  const order = state.orders.find((o) => o.id === params.orderId);
-  if (!order) {
-    return NextResponse.json({ error: "注文が見つかりません。" }, { status: 404 });
+  // 請求書IDで探す。見つからなければ注文IDとみなし、その注文の最新の請求書を返す
+  // （1注文＝1請求書だった頃のリンクを開けるようにするため）
+  const invoice =
+    state.invoices.find((inv) => inv.id === params.invoiceId) ??
+    invoicesOfOrder(params.invoiceId, state.invoices)[0];
+
+  if (!invoice) {
+    return NextResponse.json({ error: "請求書が見つかりません。" }, { status: 404 });
   }
 
-  // 発注側は自社の注文のみ閲覧できる
-  if (user.role !== "admin" && order.userId !== user.id) {
+  // 発注側は自社の請求書のみ閲覧できる
+  if (user.role !== "admin" && invoice.userId !== user.id) {
     return NextResponse.json({ error: "閲覧権限がありません。" }, { status: 403 });
   }
 
-  if (!order.invoiceNumber || order.unitPrice === null) {
-    return NextResponse.json({ error: "請求書は未発行です。" }, { status: 409 });
+  // 請求先の住所・担当者は明細の1件目の注文から引く
+  const order = state.orders.find((o) => o.id === invoice.lines[0]?.orderId);
+  if (!order) {
+    return NextResponse.json(
+      { error: "請求書の元になった注文が見つかりません。" },
+      { status: 409 }
+    );
   }
 
   let buffer: Buffer;
   try {
     // フォント欠落やPDF生成の失敗を、原因の分かる応答にして返す
     buffer = await renderToBuffer(
-      React.createElement(InvoiceDocument, { order, seller: state.seller }) as any
+      React.createElement(InvoiceDocument, {
+        invoice,
+        order,
+        seller: state.seller
+      }) as any
     );
   } catch (err) {
     console.error("[recsgps] invoice pdf render failed:", err);
@@ -50,7 +65,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="invoice-${order.invoiceNumber}.pdf"`,
+      "Content-Disposition": `inline; filename="invoice-${invoice.invoiceNumber}.pdf"`,
       "Cache-Control": "no-store"
     }
   });

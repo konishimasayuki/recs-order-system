@@ -56,6 +56,29 @@ export interface Order {
   desiredDeliveryDate: string; // YYYY-MM-DD、空文字可
 }
 
+/** 請求書の明細1行（発行時点の台数・単価を控える） */
+export interface InvoiceLine {
+  orderId: string;
+  /** 発行時点の注文番号（注文が消えても請求書に残す） */
+  orderNumber: string;
+  quantity: number;
+  /** 税込単価（円） */
+  unitPrice: number;
+}
+
+/**
+ * 請求書。1枚に複数注文の明細を持てるため、
+ * まとめ請求と、1注文を複数回に分けた請求の両方に対応する。
+ */
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  userId: string;
+  companyName: string;
+  issuedAt: string; // ISO
+  lines: InvoiceLine[];
+}
+
 export interface Delivery {
   id: string;
   orderId: string;
@@ -106,6 +129,7 @@ export interface AppState {
   users: User[];
   orders: Order[];
   deliveries: Delivery[];
+  invoices: Invoice[];
   seller: SellerSettings;
   counters: { order: number; invoice: number };
 }
@@ -127,6 +151,21 @@ export function calcAmounts(quantity: number, unitPrice: number): Amounts {
   return {
     quantity: q,
     unitPrice,
+    subtotalExcludingTax: totalAmount - taxAmount,
+    taxAmount,
+    totalAmount
+  };
+}
+
+/** 請求書1枚の合計（明細を合算し、税込金額から消費税を逆算する） */
+export function calcInvoiceAmounts(invoice: Invoice): Amounts {
+  const quantity = invoice.lines.reduce((s, l) => s + l.quantity, 0);
+  const totalAmount = invoice.lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+  const taxAmount = Math.round((totalAmount * TAX_RATE) / (1 + TAX_RATE));
+  return {
+    quantity,
+    // 明細ごとに単価が違いうるため、代表値として1台あたりの平均を持たせる
+    unitPrice: quantity > 0 ? Math.round(totalAmount / quantity) : 0,
     subtotalExcludingTax: totalAmount - taxAmount,
     taxAmount,
     totalAmount
@@ -160,6 +199,40 @@ export function deliveredQuantity(orderId: string, deliveries: Delivery[]): numb
   return deliveries
     .filter((d) => d.orderId === orderId)
     .reduce((sum, d) => sum + d.quantity, 0);
+}
+
+/** 注文に対して請求済みの台数 */
+export function invoicedQuantity(orderId: string, invoices: Invoice[]): number {
+  return invoices.reduce(
+    (sum, inv) =>
+      sum +
+      inv.lines
+        .filter((l) => l.orderId === orderId)
+        .reduce((s, l) => s + l.quantity, 0),
+    0
+  );
+}
+
+/** その注文に紐づく請求書（新しい順） */
+export function invoicesOfOrder(orderId: string, invoices: Invoice[]): Invoice[] {
+  return invoices
+    .filter((inv) => inv.lines.some((l) => l.orderId === orderId))
+    .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+}
+
+/**
+ * まだ請求書を出せる台数。
+ * 納品が済んでいて、かつ単価が決まっている分だけ請求できる。
+ */
+export function billableQuantity(
+  order: Order,
+  deliveries: Delivery[],
+  invoices: Invoice[]
+): number {
+  if (order.status === "cancelled" || order.unitPrice === null) return 0;
+  const delivered = deliveredQuantity(order.id, deliveries);
+  const invoiced = invoicedQuantity(order.id, invoices);
+  return Math.max(0, delivered - invoiced);
 }
 
 /** 一覧カードの色分けクラス名（StatusBadge の一部納品判定と揃える） */

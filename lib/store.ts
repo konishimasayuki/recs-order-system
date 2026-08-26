@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { AppState, DEFAULT_SELLER } from "./types";
+import { AppState, DEFAULT_SELLER, Invoice, Order } from "./types";
 import { hashPassword } from "./password";
 
 /**
@@ -83,6 +83,7 @@ function initialState(): AppState {
     ],
     orders: [],
     deliveries: [],
+    invoices: [],
     seller: { ...DEFAULT_SELLER },
     counters: { order: 0, invoice: 0 }
   };
@@ -110,18 +111,56 @@ function migrateUsers(users: AppState["users"]): AppState["users"] {
   });
 }
 
+/**
+ * 注文に直接持たせていた請求書番号を、請求書レコードへ移行する。
+ * 1注文＝1請求書だった時代のデータを、明細を持つ請求書に置き換える。
+ * IDは請求書番号から決まるため、何度読み込んでも同じ結果になる。
+ */
+function migrateInvoices(orders: Order[], invoices: Invoice[]): Invoice[] {
+  const known = new Set(invoices.map((inv) => inv.invoiceNumber));
+  const migrated: Invoice[] = [];
+  for (const order of orders) {
+    if (!order.invoiceNumber || order.unitPrice === null) continue;
+    if (known.has(order.invoiceNumber)) continue;
+    known.add(order.invoiceNumber);
+    migrated.push({
+      id: `inv_legacy_${order.invoiceNumber}`,
+      invoiceNumber: order.invoiceNumber,
+      userId: order.userId,
+      companyName: order.companyName,
+      issuedAt: order.invoicedAt ?? order.orderedAt,
+      lines: [
+        {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          quantity: order.quantity,
+          unitPrice: order.unitPrice
+        }
+      ]
+    });
+  }
+  return [...invoices, ...migrated];
+}
+
 /** 後から追加したフィールドの欠落を埋める（既存データの前方互換） */
 function normalize(state: AppState): AppState {
+  const orders = (state.orders ?? []).map((o) => ({
+    ...o,
+    note: o.note ?? "",
+    desiredDeliveryDate: o.desiredDeliveryDate ?? "",
+    invoiceNumber: o.invoiceNumber ?? null,
+    invoicedAt: o.invoicedAt ?? null
+  }));
+  const invoices = (state.invoices ?? []).map((inv) => ({
+    ...inv,
+    lines: inv.lines ?? []
+  }));
+
   return {
     users: migrateUsers(state.users ?? []),
-    orders: (state.orders ?? []).map((o) => ({
-      ...o,
-      note: o.note ?? "",
-      desiredDeliveryDate: o.desiredDeliveryDate ?? "",
-      invoiceNumber: o.invoiceNumber ?? null,
-      invoicedAt: o.invoicedAt ?? null
-    })),
+    orders,
     deliveries: state.deliveries ?? [],
+    invoices: migrateInvoices(orders, invoices),
     seller: { ...DEFAULT_SELLER, ...(state.seller ?? {}) },
     counters: {
       order: state.counters?.order ?? 0,

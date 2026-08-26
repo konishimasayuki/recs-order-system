@@ -16,7 +16,7 @@ export default async function CustomerDashboard({
   const user = await requireUser("customer");
   const state = await readState();
   const orders = ordersOf(state, user.id);
-  const summary = summarize(orders, state.deliveries);
+  const summary = summarize(orders, state.deliveries, state.invoices);
   const recent = orders.slice(0, 5);
   const progress =
     summary.orderedQuantity > 0
