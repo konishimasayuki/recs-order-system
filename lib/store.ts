@@ -346,43 +346,16 @@ export async function mutateState<T>(
   }
 }
 
-/**
- * 使われていない一番小さい番号を採る。
- * 単純な連番だと、削除したレコードの番号が二度と使えないため、
- * 現在使用中の番号を見て空き番号を割り当てる。
- */
-function allocateNumber(prefix: string, used: Set<string>): string {
-  let n = 1;
-  while (used.has(`${prefix}${String(n).padStart(4, "0")}`)) n += 1;
-  return `${prefix}${String(n).padStart(4, "0")}`;
-}
-
 export function nextOrderNumber(state: AppState): string {
-  const prefix = `RG-${new Date().getFullYear()}-`;
-  const number = allocateNumber(
-    prefix,
-    new Set(state.orders.map((o) => o.orderNumber))
-  );
-  // counters は「これまでの最大値」の控えとして残す
-  state.counters.order = Math.max(state.counters.order, Number(number.slice(prefix.length)));
-  return number;
+  state.counters.order += 1;
+  const y = new Date().getFullYear();
+  return `RG-${y}-${String(state.counters.order).padStart(4, "0")}`;
 }
 
 export function nextInvoiceNumber(state: AppState): string {
-  const prefix = `INV-${new Date().getFullYear()}-`;
-  const number = allocateNumber(
-    prefix,
-    new Set(
-      state.orders
-        .map((o) => o.invoiceNumber)
-        .filter((n): n is string => Boolean(n))
-    )
-  );
-  state.counters.invoice = Math.max(
-    state.counters.invoice,
-    Number(number.slice(prefix.length))
-  );
-  return number;
+  state.counters.invoice += 1;
+  const y = new Date().getFullYear();
+  return `INV-${y}-${String(state.counters.invoice).padStart(4, "0")}`;
 }
 
 export function newId(prefix: string): string {

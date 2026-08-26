@@ -4,7 +4,6 @@ import AppHeader from "@/components/AppHeader";
 import StatusBadge from "@/components/StatusBadge";
 import SubmitButton from "@/components/SubmitButton";
 import {
-  acceptOrderAction,
   cancelOrderAction,
   deleteDeliveryAction,
   issueInvoiceAction,
@@ -25,7 +24,6 @@ import {
 export const dynamic = "force-dynamic";
 
 const OK_MESSAGES: Record<string, string> = {
-  accepted: "注文を受け付けました。",
   price: "単価を保存しました。",
   invoiced: "請求書を発行しました。",
   delivered: "納品を登録しました。",
@@ -94,25 +92,7 @@ export default async function AdminOrderDetail({
                 {order.companyName}／{formatDateTime(order.orderedAt)} 受付
               </p>
             </div>
-            {order.status === "ordered" ? (
-              // 受付待のあいだは状況そのものが受付ボタンになる
-              <form action={acceptOrderAction} className="inline-form">
-                <input type="hidden" name="orderId" value={order.id} />
-                <button
-                  type="submit"
-                  className="badge badge-ordered badge-button"
-                  title="押すと受付済になります"
-                >
-                  受付待
-                </button>
-              </form>
-            ) : (
-              <StatusBadge
-                status={order.status}
-                delivered={delivered}
-                quantity={order.quantity}
-              />
-            )}
+            <StatusBadge status={order.status} delivered={delivered} quantity={order.quantity} />
           </div>
 
           <table className="detail-table">

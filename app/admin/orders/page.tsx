@@ -1,7 +1,6 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import ListFilter from "@/components/ListFilter";
-import { acceptOrderAction } from "@/app/actions";
 import { parseMulti } from "@/lib/filters";
 import Pagination, { clampPage } from "@/components/Pagination";
 import StatusBadge from "@/components/StatusBadge";
@@ -13,14 +12,14 @@ import { ORDER_STATUS_LABEL, OrderStatus, deliveredQuantity, formatDate } from "
 export const dynamic = "force-dynamic";
 
 /** 絞り込みに出す状況。納品完了は絞り込み対象外（全件表示には含まれる） */
-const FILTER_STATUSES: OrderStatus[] = ["ordered", "pending", "invoiced", "cancelled"];
+const FILTER_STATUSES: OrderStatus[] = ["pending", "invoiced", "cancelled"];
 
 const PER_PAGE = 20;
 
 export default async function AdminOrdersPage({
   searchParams
 }: {
-  searchParams: { status?: string; company?: string; page?: string; ok?: string };
+  searchParams: { status?: string; company?: string; page?: string };
 }) {
   const user = await requireUser("admin");
   const state = await readState();
@@ -44,24 +43,11 @@ export default async function AdminOrdersPage({
   const page = clampPage(searchParams.page, orders.length, PER_PAGE);
   const pageOrders = orders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  // 受付ボタンを押したあとも、同じ絞り込み・ページに戻る
-  const backParams = new URLSearchParams();
-  if (statusSelected.length) backParams.set("status", statusSelected.join(","));
-  if (companySelected.length) backParams.set("company", companySelected.join(","));
-  if (page > 1) backParams.set("page", String(page));
-  const backTo = backParams.size
-    ? `/admin/orders?${backParams.toString()}`
-    : "/admin/orders";
-
   return (
     <div className="page-shell">
       <AppHeader user={user} current="/admin/orders" />
 
       <div className="container">
-        {searchParams.ok === "accepted" && (
-          <div className="success-box">注文を受け付けました。</div>
-        )}
-
         <div className="card">
           <div className="card-head">
             <div className="card-head-text">
@@ -77,7 +63,7 @@ export default async function AdminOrdersPage({
                   name: "status",
                   label: "状況",
                   values: statusSelected,
-                  columns: 2,
+                  columns: 3,
                   options: FILTER_STATUSES.map((s) => ({
                     value: s,
                     label: ORDER_STATUS_LABEL[s]
@@ -137,26 +123,11 @@ export default async function AdminOrdersPage({
                           {order.quantity} 台
                         </td>
                         <td data-label="状況">
-                          {order.status === "ordered" ? (
-                            // 受付待のあいだは状況そのものが受付ボタンになる
-                            <form action={acceptOrderAction} className="inline-form">
-                              <input type="hidden" name="orderId" value={order.id} />
-                              <input type="hidden" name="returnTo" value={backTo} />
-                              <button
-                                type="submit"
-                                className="badge badge-ordered badge-button"
-                                title="押すと受付済になります"
-                              >
-                                受付待
-                              </button>
-                            </form>
-                          ) : (
-                            <StatusBadge
-                              status={order.status}
-                              delivered={delivered}
-                              quantity={order.quantity}
-                            />
-                          )}
+                          <StatusBadge
+                            status={order.status}
+                            delivered={delivered}
+                            quantity={order.quantity}
+                          />
                         </td>
                         <td className="mono" data-label="請求書">
                           {order.invoiceNumber ? (
