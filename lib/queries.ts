@@ -1,4 +1,12 @@
-import { AppState, Delivery, Order, deliveredQuantity } from "./types";
+import {
+  AppState,
+  Delivery,
+  Invoice,
+  Order,
+  billableQuantity,
+  calcInvoiceAmounts,
+  deliveredQuantity
+} from "./types";
 
 export interface Summary {
   orderCount: number;
@@ -13,7 +21,11 @@ function isActive(order: Order): boolean {
   return order.status !== "cancelled";
 }
 
-export function summarize(orders: Order[], deliveries: Delivery[]): Summary {
+export function summarize(
+  orders: Order[],
+  deliveries: Delivery[],
+  invoices: Invoice[] = []
+): Summary {
   const active = orders.filter(isActive);
   const orderedQuantity = active.reduce((s, o) => s + o.quantity, 0);
   const activeIds = new Set(active.map((o) => o.id));
@@ -21,9 +33,17 @@ export function summarize(orders: Order[], deliveries: Delivery[]): Summary {
     .filter((d) => activeIds.has(d.orderId))
     .reduce((s, d) => s + d.quantity, 0);
 
-  const invoicedAmount = active
-    .filter((o) => o.invoiceNumber && o.unitPrice !== null)
-    .reduce((s, o) => s + o.quantity * (o.unitPrice ?? 0), 0);
+  // 請求済金額は請求書の明細から数える（分割請求・まとめ請求に対応）
+  const invoicedAmount = invoices
+    .filter((inv) => inv.lines.some((l) => activeIds.has(l.orderId)))
+    .reduce(
+      (s, inv) =>
+        s +
+        inv.lines
+          .filter((l) => activeIds.has(l.orderId))
+          .reduce((t, l) => t + l.quantity * l.unitPrice, 0),
+      0
+    );
 
   return {
     orderCount: active.length,
@@ -31,8 +51,23 @@ export function summarize(orders: Order[], deliveries: Delivery[]): Summary {
     deliveredQuantity: delivered,
     pendingQuantity: Math.max(0, orderedQuantity - delivered),
     invoicedAmount,
-    awaitingInvoiceCount: active.filter((o) => !o.invoiceNumber).length
+    // 納品済みで単価も決まっているのに、まだ請求していない台数が残る注文
+    awaitingInvoiceCount: active.filter(
+      (o) => billableQuantity(o, deliveries, invoices) > 0
+    ).length
   };
+}
+
+/** 請求書を新しい順に並べる（発注元で絞り込める） */
+export function invoicesOf(state: AppState, userId?: string): Invoice[] {
+  return state.invoices
+    .filter((inv) => !userId || inv.userId === userId)
+    .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+}
+
+/** 請求書1枚の合計金額（一覧の表示用） */
+export function invoiceTotal(invoice: Invoice): number {
+  return calcInvoiceAmounts(invoice).totalAmount;
 }
 
 export function ordersOf(state: AppState, userId: string): Order[] {

@@ -10,11 +10,12 @@ type FontkitFont = ReturnType<typeof fontkit.openSync>;
 /** 発行元ブロックの1行（ラベルと、折り返しを含む値の各行） */
 type InfoRow = { label: string; lines: string[] };
 import {
+  Invoice,
   Order,
   PRODUCT_NAME_MAIN,
   PRODUCT_NAME_SUB,
   SellerSettings,
-  calcAmounts,
+  calcInvoiceAmounts,
   formatDate,
   yen
 } from "./types";
@@ -189,9 +190,12 @@ function splitAddress(address: string): string[] {
 }
 
 export function InvoiceDocument({
+  invoice,
   order,
   seller
 }: {
+  invoice: Invoice;
+  /** 請求先の住所・担当者を出すための代表の注文（明細の1件目） */
   order: Order;
   seller: SellerSettings;
 }) {
@@ -233,8 +237,7 @@ export function InvoiceDocument({
     </View>
   );
 
-  const unitPrice = order.unitPrice ?? 0;
-  const amounts = calcAmounts(order.quantity, unitPrice);
+  const amounts = calcInvoiceAmounts(invoice);
   const hasBank = Boolean(seller.bankName || seller.accountNumber || seller.accountHolder);
 
   return (
@@ -244,15 +247,19 @@ export function InvoiceDocument({
 
         <View style={styles.metaRow}>
           <View style={styles.metaBox}>
-            <Text>請求書番号：{line(order.invoiceNumber ?? "")}</Text>
-            <Text>発行日：{formatDate(order.invoicedAt ?? new Date().toISOString())}</Text>
-            <Text>注文番号：{order.orderNumber}</Text>
+            <Text>請求書番号：{line(invoice.invoiceNumber)}</Text>
+            <Text>発行日：{formatDate(invoice.issuedAt)}</Text>
+            {invoice.lines.length === 1 ? (
+              <Text>注文番号：{invoice.lines[0].orderNumber}</Text>
+            ) : (
+              <Text>注文件数：{invoice.lines.length} 件</Text>
+            )}
           </View>
         </View>
 
         <View style={styles.headerRow}>
           <View style={styles.billToWrap}>
-            <Text style={styles.billTo}>{order.companyName} 御中</Text>
+            <Text style={styles.billTo}>{invoice.companyName} 御中</Text>
             <Text style={styles.billToAddress}>{order.shippingAddress}</Text>
             {order.contactName ? <Text style={{ fontSize: 9.5 }}>ご担当：{withHonorific(order.contactName)}</Text> : null}
           </View>
@@ -293,15 +300,20 @@ export function InvoiceDocument({
             <Text style={styles.colUnit}>単価（税込）</Text>
             <Text style={styles.colAmount}>金額（税込）</Text>
           </View>
-          <View style={styles.tableRow}>
-            <View style={styles.colItem}>
-              <Text>{PRODUCT_NAME_MAIN}</Text>
-              <Text style={styles.itemSub}>{PRODUCT_NAME_SUB}</Text>
+          {invoice.lines.map((item, index) => (
+            <View style={styles.tableRow} key={`${item.orderId}-${index}`}>
+              <View style={styles.colItem}>
+                <Text>{PRODUCT_NAME_MAIN}</Text>
+                <Text style={styles.itemSub}>{PRODUCT_NAME_SUB}</Text>
+                <Text style={styles.itemSub}>注文番号：{item.orderNumber}</Text>
+              </View>
+              <Text style={styles.colQty}>{item.quantity}</Text>
+              <Text style={styles.colUnit}>{yen(item.unitPrice)}</Text>
+              <Text style={styles.colAmount}>
+                {yen(item.quantity * item.unitPrice)}
+              </Text>
             </View>
-            <Text style={styles.colQty}>{amounts.quantity}</Text>
-            <Text style={styles.colUnit}>{yen(amounts.unitPrice)}</Text>
-            <Text style={styles.colAmount}>{yen(amounts.totalAmount)}</Text>
-          </View>
+          ))}
         </View>
 
         <View style={styles.summaryTable}>

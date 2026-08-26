@@ -12,6 +12,7 @@ import {
   OrderStatus,
   deliveredQuantity,
   formatDate,
+  invoicesOfOrder,
   statusTone,
   yen
 } from "@/lib/types";
@@ -37,7 +38,7 @@ export default async function OrderHistoryPage({
       ? allMine
       : allMine.filter((o) => statusSelected.includes(o.status));
 
-  const summary = summarize(orders, state.deliveries);
+  const summary = summarize(orders, state.deliveries, state.invoices);
   const page = clampPage(searchParams.page, orders.length, PER_PAGE);
   const pageOrders = orders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -106,6 +107,7 @@ export default async function OrderHistoryPage({
                 <tbody>
                   {pageOrders.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
+                    const invoices = invoicesOfOrder(order.id, state.invoices);
                     return (
                       <tr
                         key={order.id}
@@ -133,17 +135,21 @@ export default async function OrderHistoryPage({
                           )}
                         </td>
                         <td data-label="請求書">
-                          {order.invoiceNumber ? (
-                            <a
-                              className="link"
-                              href={`/api/invoice/${order.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              PDF
-                            </a>
-                          ) : (
+                          {invoices.length === 0 ? (
                             <span className="muted">—</span>
+                          ) : (
+                            invoices.map((inv) => (
+                              <a
+                                key={inv.id}
+                                className="link"
+                                href={`/api/invoice/${inv.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ marginRight: 8 }}
+                              >
+                                {inv.invoiceNumber}
+                              </a>
+                            ))
                           )}
                         </td>
                       </tr>

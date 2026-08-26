@@ -7,7 +7,13 @@ import StatusBadge from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { allOrders, summarize } from "@/lib/queries";
 import { readState } from "@/lib/store";
-import { ORDER_STATUS_LABEL, OrderStatus, deliveredQuantity, formatDate } from "@/lib/types";
+import {
+  ORDER_STATUS_LABEL,
+  OrderStatus,
+  deliveredQuantity,
+  formatDate,
+  invoicedQuantity
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +45,7 @@ export default async function AdminOrdersPage({
     orders = orders.filter((o) => companySelected.includes(o.userId));
   }
 
-  const summary = summarize(orders, state.deliveries);
+  const summary = summarize(orders, state.deliveries, state.invoices);
   const page = clampPage(searchParams.page, orders.length, PER_PAGE);
   const pageOrders = orders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -102,6 +108,7 @@ export default async function AdminOrdersPage({
                 <tbody>
                   {pageOrders.map((order) => {
                     const delivered = deliveredQuantity(order.id, state.deliveries);
+                    const invoiced = invoicedQuantity(order.id, state.invoices);
                     return (
                       <tr key={order.id} className="selectable">
                         <td className="mono" data-label="注文番号">
@@ -129,18 +136,13 @@ export default async function AdminOrdersPage({
                             quantity={order.quantity}
                           />
                         </td>
-                        <td className="mono" data-label="請求書">
-                          {order.invoiceNumber ? (
-                            <a
-                              className="link"
-                              href={`/api/invoice/${order.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {order.invoiceNumber}
-                            </a>
-                          ) : (
+                        <td data-label="請求書">
+                          {invoiced === 0 ? (
                             <span className="muted">未発行</span>
+                          ) : invoiced >= order.quantity ? (
+                            "発行済"
+                          ) : (
+                            `一部 ${invoiced}／${order.quantity} 台`
                           )}
                         </td>
                       </tr>
