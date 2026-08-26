@@ -54,7 +54,11 @@ export default async function AdminDashboard({
    * ダッシュボードでは会社単位のまとめだけを見せ、明細は受注一覧に任せる。
    */
   const needsActionAll = orders.filter(
-    (o) => o.status !== "cancelled" && o.status !== "delivered"
+    (o) =>
+      o.status !== "cancelled" &&
+      o.status !== "delivered" &&
+      // 受付前の注文はまだ引き受けていないため台数に足さない（受付待の欄で扱う）
+      o.status !== "ordered"
   );
 
   const byCompany = new Map<
@@ -240,30 +244,30 @@ export default async function AdminDashboard({
               <table className="data-table pair-cards">
                 <thead>
                   <tr>
-                    <th>注文番号</th>
-                    <th>発注元</th>
                     <th>注文日</th>
+                    <th>発注元</th>
                     <th className="num">台数</th>
+                    <th>納品希望日</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {awaiting.map((order) => (
                     <tr key={order.id} className="selectable tone-ordered">
-                      <td className="mono" data-label="注文番号">
+                      <td className="mono" data-label="注文日">
                         <Link
                           href={`/admin/orders/${order.id}`}
                           className="row-link"
                         >
-                          {order.orderNumber}
+                          {formatDate(order.orderedAt)}
                         </Link>
                       </td>
                       <td data-label="発注元">{order.companyName}</td>
-                      <td className="mono" data-label="注文日">
-                        {formatDate(order.orderedAt)}
-                      </td>
                       <td className="num" data-label="台数">
                         {order.quantity} 台
+                      </td>
+                      <td className="mono" data-label="納品希望日">
+                        {order.desiredDeliveryDate || "—"}
                       </td>
                       <td className="row-action">
                         {/* ダッシュボードからそのまま受け付ける */}
