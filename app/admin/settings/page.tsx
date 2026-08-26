@@ -1,16 +1,20 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import SubmitButton from "@/components/SubmitButton";
+import Pagination, { clampPage } from "@/components/Pagination";
+import StatusBadge from "@/components/StatusBadge";
 import {
   createAccountAction,
+  deleteOrderAction,
   sendTestMailAction,
   updateAccountAction,
   updateSellerAction
 } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { getMailConfig } from "@/lib/mail";
+import { allOrders } from "@/lib/queries";
 import { STORAGE_MODE, readState } from "@/lib/store";
-import { formatDate, yen } from "@/lib/types";
+import { deliveredQuantity, formatDate, yen } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +26,11 @@ const OK_MESSAGES: Record<string, string> = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   input: "ID・パスワード（4文字以上）・会社名は必須です。",
-  duplicate: "そのIDはすでに使われています。別のIDを指定してください。"
+  duplicate: "そのIDはすでに使われています。別のIDを指定してください。",
+  notfound: "対象の注文が見つかりませんでした。すでに削除されている可能性があります。"
 };
+
+const ORDERS_PER_PAGE = 20;
 
 /**
  * 設定のまとめ画面。利用頻度の低い設定系（発注アカウント・請求元情報）を
@@ -39,6 +46,9 @@ export default async function AdminSettingsPage({
     ok?: string;
     error?: string;
     mailtest?: string;
+    number?: string;
+    delete?: string;
+    page?: string;
   };
 }) {
   const user = await requireUser("admin");
@@ -49,12 +59,36 @@ export default async function AdminSettingsPage({
     .filter((u) => u.role === "customer")
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
-  const tab = searchParams.tab === "seller" ? "seller" : "accounts";
+  const tab =
+    searchParams.tab === "seller"
+      ? "seller"
+      : searchParams.tab === "orders"
+        ? "orders"
+        : "accounts";
   const creating = searchParams.mode === "new";
   // 存在しないIDを指定された場合は未選択として扱う
   const selected = customers.find((c) => c.id === searchParams.select) ?? null;
 
-  const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] : null;
+  // 注文の削除タブ。1件ずつ確認してから消す
+  const orders = allOrders(state);
+  const ordersPage = clampPage(searchParams.page, orders.length, ORDERS_PER_PAGE);
+  const pageOrders = orders.slice(
+    (ordersPage - 1) * ORDERS_PER_PAGE,
+    ordersPage * ORDERS_PER_PAGE
+  );
+  const deleteTarget = searchParams.delete
+    ? orders.find((o) => o.id === searchParams.delete) ?? null
+    : null;
+  const deleteTargetDeliveries = deleteTarget
+    ? state.deliveries.filter((d) => d.orderId === deleteTarget.id)
+    : [];
+
+  const okMessage =
+    searchParams.ok === "deleted"
+      ? `注文 ${searchParams.number ?? ""} を削除しました。この注文番号は次の注文で再び使われます。`
+      : searchParams.ok
+        ? OK_MESSAGES[searchParams.ok]
+        : null;
   const errorMessage = searchParams.error ? ERROR_MESSAGES[searchParams.error] : null;
 
   return (
@@ -77,9 +111,86 @@ export default async function AdminSettingsPage({
             >
               請求元情報
             </Link>
+            <Link
+              href="/admin/settings?tab=orders"
+              className={tab === "orders" ? "active" : ""}
+            >
+              注文の削除
+            </Link>
           </nav>
 
-          {tab === "seller" ? (
+          {tab === "orders" ? (
+            <>
+              <p className="card-desc">
+                誤って作成した注文を1件ずつ削除します。紐づく納品記録も一緒に
+                削除され、削除した注文番号は次の注文で再び使われます。
+                取り消しはできません。
+              </p>
+
+              {orders.length === 0 ? (
+                <div className="empty-state">削除できる注文はありません。</div>
+              ) : (
+                <>
+                  <div className="table-wrap">
+                    <table className="data-table pair-cards">
+                      <thead>
+                        <tr>
+                          <th>注文番号</th>
+                          <th>発注元</th>
+                          <th>注文日</th>
+                          <th className="num">台数</th>
+                          <th>状況</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageOrders.map((order) => {
+                          const delivered = deliveredQuantity(order.id, state.deliveries);
+                          return (
+                            <tr key={order.id}>
+                              <td className="mono" data-label="注文番号">
+                                {order.orderNumber}
+                              </td>
+                              <td data-label="発注元">{order.companyName}</td>
+                              <td className="mono" data-label="注文日">
+                                {formatDate(order.orderedAt)}
+                              </td>
+                              <td className="num" data-label="台数">
+                                {order.quantity} 台
+                              </td>
+                              <td data-label="状況">
+                                <StatusBadge
+                                  status={order.status}
+                                  delivered={delivered}
+                                  quantity={order.quantity}
+                                />
+                              </td>
+                              <td className="row-action">
+                                <Link
+                                  href={`/admin/settings?tab=orders&page=${ordersPage}&delete=${order.id}`}
+                                  className="btn btn-danger btn-sm"
+                                >
+                                  削除
+                                </Link>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <Pagination
+                    total={orders.length}
+                    page={ordersPage}
+                    perPage={ORDERS_PER_PAGE}
+                    basePath="/admin/settings"
+                    params={{ tab: "orders" }}
+                  />
+                </>
+              )}
+            </>
+          ) : tab === "seller" ? (
             <form action={updateSellerAction}>
               <p className="card-desc">
                 ここで入力した内容が請求書PDFに印字されます。空欄の項目は印字されません。
@@ -555,6 +666,85 @@ export default async function AdminSettingsPage({
           </div>
         )}
 
+        {deleteTarget && (
+          <div className="modal-backdrop">
+            <Link
+              href={`/admin/settings?tab=orders&page=${ordersPage}`}
+              className="modal-scrim"
+              aria-label="閉じる"
+            />
+            <div className="modal" role="dialog" aria-modal="true">
+              <div className="modal-head">
+                <h2 className="card-title">この注文を削除しますか？</h2>
+                <Link
+                  href={`/admin/settings?tab=orders&page=${ordersPage}`}
+                  className="modal-close"
+                  aria-label="閉じる"
+                >
+                  ×
+                </Link>
+              </div>
+
+              <table className="detail-table">
+                <tbody>
+                  <tr>
+                    <th>注文番号</th>
+                    <td className="mono">{deleteTarget.orderNumber}</td>
+                  </tr>
+                  <tr>
+                    <th>発注元</th>
+                    <td>{deleteTarget.companyName}</td>
+                  </tr>
+                  <tr>
+                    <th>注文日</th>
+                    <td className="mono">{formatDate(deleteTarget.orderedAt)}</td>
+                  </tr>
+                  <tr>
+                    <th>台数</th>
+                    <td>{deleteTarget.quantity} 台</td>
+                  </tr>
+                  <tr>
+                    <th>納品記録</th>
+                    <td>
+                      {deleteTargetDeliveries.length > 0
+                        ? `${deleteTargetDeliveries.length} 件（一緒に削除されます）`
+                        : "なし"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>請求書</th>
+                    <td className="mono">
+                      {deleteTarget.invoiceNumber ?? "未発行"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="notice-inline" style={{ marginTop: 16 }}>
+                削除すると元に戻せません。注文番号{" "}
+                {deleteTarget.orderNumber} は次の注文で再び使われます。
+                {deleteTarget.invoiceNumber
+                  ? `発行済みの請求書 ${deleteTarget.invoiceNumber} も無効になります。`
+                  : ""}
+              </div>
+
+              <form action={deleteOrderAction}>
+                <input type="hidden" name="orderId" value={deleteTarget.id} />
+                <div className="action-row">
+                  <SubmitButton className="btn btn-danger">
+                    この注文を削除する
+                  </SubmitButton>
+                  <Link
+                    href={`/admin/settings?tab=orders&page=${ordersPage}`}
+                    className="btn btn-outline"
+                  >
+                    キャンセル
+                  </Link>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
