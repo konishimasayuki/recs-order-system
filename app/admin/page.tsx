@@ -1,7 +1,7 @@
 import Link from "next/link";
 import AppHeader from "@/components/AppHeader";
 import SubmitButton from "@/components/SubmitButton";
-import { registerDeliveryAction } from "@/app/actions";
+import { acceptOrderAction, registerDeliveryAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { allOrders, rollupByCustomer, summarize } from "@/lib/queries";
 import { getStorageStatus, readState } from "@/lib/store";
@@ -36,6 +36,17 @@ export default async function AdminDashboard({
   const sellerIncomplete = !state.seller.address;
 
   const ROLLUP_LIMIT = 5;
+  const AWAITING_LIMIT = 5;
+
+  /**
+   * 受付待。ダッシュボードからそのまま受け付けられるようにする。
+   * 待たせている順（古い注文が先）に並べる。
+   */
+  const awaitingAll = orders
+    .filter((o) => o.status === "ordered")
+    .sort((a, b) => a.orderedAt.localeCompare(b.orderedAt));
+  const awaiting = awaitingAll.slice(0, AWAITING_LIMIT);
+  const awaitingHidden = awaitingAll.length - awaiting.length;
 
   /**
    * 対応中（請求書発行または納品が未完了）の受注を発注元ごとに集計する。
@@ -105,6 +116,9 @@ export default async function AdminDashboard({
       <div className="container">
         {searchParams.ok === "delivered" && (
           <div className="success-box">納品を登録しました。</div>
+        )}
+        {searchParams.ok === "accepted" && (
+          <div className="success-box">注文を受け付けました。</div>
         )}
         {deliveryError && <div className="error-box">{deliveryError}</div>}
 
@@ -199,6 +213,79 @@ export default async function AdminDashboard({
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div className="card-head-text">
+              <h2 className="card-title">
+                受付待の受注（{awaitingAll.length} 件）
+              </h2>
+            </div>
+            {awaitingAll.length > 0 && (
+              <Link
+                href="/admin/orders?status=ordered"
+                className="btn btn-outline btn-sm"
+              >
+                すべて見る
+              </Link>
+            )}
+          </div>
+
+          {awaiting.length === 0 ? (
+            <div className="empty-state">受付待の受注はありません。</div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table pair-cards">
+                <thead>
+                  <tr>
+                    <th>注文番号</th>
+                    <th>発注元</th>
+                    <th>注文日</th>
+                    <th className="num">台数</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {awaiting.map((order) => (
+                    <tr key={order.id} className="selectable tone-ordered">
+                      <td className="mono" data-label="注文番号">
+                        <Link
+                          href={`/admin/orders/${order.id}`}
+                          className="row-link"
+                        >
+                          {order.orderNumber}
+                        </Link>
+                      </td>
+                      <td data-label="発注元">{order.companyName}</td>
+                      <td className="mono" data-label="注文日">
+                        {formatDate(order.orderedAt)}
+                      </td>
+                      <td className="num" data-label="台数">
+                        {order.quantity} 台
+                      </td>
+                      <td className="row-action">
+                        {/* ダッシュボードからそのまま受け付ける */}
+                        <form action={acceptOrderAction} className="inline-form">
+                          <input type="hidden" name="orderId" value={order.id} />
+                          <input type="hidden" name="returnTo" value="/admin" />
+                          <button type="submit" className="btn btn-gold btn-sm">
+                            受け付ける
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {awaitingHidden > 0 && (
+            <p className="muted" style={{ fontSize: 12.5, margin: "12px 0 0" }}>
+              古い順に {awaiting.length} 件を表示しています（ほか {awaitingHidden} 件）。
+            </p>
           )}
         </div>
 
