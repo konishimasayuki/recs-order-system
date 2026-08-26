@@ -7,9 +7,17 @@ import { Order, PRODUCT_NAME, formatDateTime } from "./types";
  *   RESEND_FROM_EMAIL   … ドメイン認証済みの送信元アドレス
  *   NOTIFY_EMAIL        … 受注通知の宛先（カンマ区切りで複数可）
  */
+/**
+ * テスト中の一時停止スイッチ。
+ * true の間はテストメールも含め一切送信しない。
+ * メール通知を再開するときは false に戻すだけでよい。
+ */
+export const MAIL_SUSPENDED = true;
+
 export function getMailConfig() {
   return {
-    enabled: Boolean(process.env.RESEND_API_KEY),
+    suspended: MAIL_SUSPENDED,
+    enabled: !MAIL_SUSPENDED && Boolean(process.env.RESEND_API_KEY),
     from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
     to: (process.env.NOTIFY_EMAIL || "info@miamiholdings.co.jp")
       .split(",")
@@ -20,6 +28,11 @@ export function getMailConfig() {
 
 /** Resend で送信する。成功なら null、失敗なら原因の文字列を返す（例外は投げない） */
 async function sendMail(subject: string, html: string): Promise<string | null> {
+  if (MAIL_SUSPENDED) {
+    console.info("mail suspended, skipped:", subject);
+    return "メール通知はテストのため一時停止中です。";
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return "RESEND_API_KEY が設定されていません。";
 
